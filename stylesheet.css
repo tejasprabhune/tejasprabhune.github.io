@@ -133,3 +133,12 @@ h2 {
 span.highlight {
   background-color: #ffffd0;
 }
+
+body {
+  border: none;
+  border-color: white;
+}
+
+tbody {
+  border: none;
+}

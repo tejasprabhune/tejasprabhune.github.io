@@ -9,7 +9,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link rel="stylesheet" type="text/css" href="stylesheet.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌐</text></svg>">
   </head>
 
   <body>
@@ -22,7 +21,17 @@
                 <p class="name" style="text-align: center;">
                   Tejas Prabhune
                 </p>
-                <p style="font-size:16px;"></p>
+                <p style="font-size:16px;">
+                I am a second-year EECS major at UC Berkeley, advised by 
+                Dr. Gopala K. Anumanchipalli, Peter Wu, Cheol Jun Cho, and Jiachen Lian.
+                I primarily work at the Berkeley Speech Group within 
+                Berkeley Artificial Intelligence Research (BAIR).
+                </p>
+                <p style="font-size:16px;">
+                My research is focused on visualizing the vocal tract using speech-driven 3D avatars,
+                brain-to-computer interfaces (BCI) for virtual embodiment, and generating
+                realistic audio-visual dialogues using avatar-based LLMs.
+                </p>
                 <p style="text-align:center; font-size:16px;">
                   <a href="mailto:prabhune@berkeley.edu">Email</a> &nbsp;/&nbsp;
                   <a href="data/TejasPrabhuneResume.pdf">Resume</a> &nbsp;/&nbsp;
@@ -41,5 +50,104 @@
               </td>
             </tr>
           </tbody></table>
+          <table style="width:100%;border:0px;border-spacing:0px;border-collapse:separate;margin-right:auto;margin-left:auto;">
+            
+      <tbody>
+
+      <tr>
+        <td style="padding:20px;width:10%;vertical-align:middle;border:none;">
+          <div class="one">
+            <div class="two" id='em_video'>
+              <video width=300 muted autoplay loop>
+                <source src="images/mri.mp4" type="video/mp4" style="border:0px">
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <img src='images/mri.mp4' width="300px" height="100px">
+          </div>
+        <td style="padding:20px;width:75%;vertical-align:middle;border:none;">
+            <span class="papertitle">Multimodal Pretraining for Vocal Tract Modeling</span>
+          <br>
+          <strong>Tejas S. Prabhune</strong>, Bohan Yu, Rishi Jain, Peter Wu, Gopala K. Anumanchipalli
+          <br>
+          <em>ASRU Demo</em>, 2023
+          <br>
+          <a href="https://arxiv.org/pdf/2310.16287">paper</a>
+        </td>
+      </tr>
+
+      <tr onmouseout="vmvae_stop()" onmouseover="vmvae_start()">
+        <td style="padding:20px;width:10%;vertical-align:middle;border:none;">
+          <div class="one">
+            <div class="two" id='em_video'>
+              <video width=300 muted autoplay loop>
+                <source src="images/demo_short_vowels.mp4" type="video/mp4" style="border:0px">
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <img src='images/demo_short_vowels.mp4' width="300px" height="100px">
+          </div>
+        <td style="padding:20px;width:75%;vertical-align:middle;border:none;">
+            <span class="papertitle">Towards Streaming Speech-to-Avatar Synthesis</span>
+          <br>
+          <strong>Tejas S. Prabhune</strong>, Peter Wu, Bohan Yu, Gopala K. Anumanchipalli
+          <br>
+          <em>ASRU Demo</em>, 2023
+          <br>
+          <a href="https://arxiv.org/pdf/2310.16287">paper</a>
+        </td>
+      </tr>
+
+
+
+      <tr>
+        <td style="padding:20px;width:25%;vertical-align:middle;border:none">
+          <img src='images/diabetic_retinopathy.webp' width="300">
+        </td>
+        <td style="padding:20px;width:75%;vertical-align:middle">
+            <span class="papertitle">Contrastive learning-based pretraining improves representation and transferability of diabetic retinopathy classification models</span>
+          </a>
+          <br>
+          Minhaj Nur Alam, Rikiya Yamashita, Vignav Ramesh, <strong>Tejas S. Prabhune</strong>, Jennifer I. Lim, Robison Vernon Paul Chan, Joelle Hallak, Theodore Leng, Daniel Rubin
+          <br>
+          <em>Nature Scientific Reports</em>, 2023
+          <br>
+          <a href="https://www.nature.com/articles/s41598-023-33365-y">paper</a>
+          <p></p>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:20px;width:25%;vertical-align:middle;border:none">
+          <img src='images/seg.png' width="300">
+        </td>
+        <td style="padding:20px;width:75%;vertical-align:middle">
+            <span class="papertitle">Dataset-Agnostic Vessel Segmentation of Retinal Fundus Images by a Vector Quantized Variational Autoencoder</span>
+          </a>
+          <br>
+          <strong>Tejas S. Prabhune</strong>, David Walz
+          <br>
+          <em>Journal of Student Research</em>, 2021
+          <br>
+          <a href="https://www.jsr.org/hs/index.php/path/article/download/2280/887">paper</a>
+          <p></p>
+        </td>
+      </tr>
+
+      </tbody>
+        
+    </table>
+          <table style="width:100%;border:0px;border-spacing:0px;border-collapse:separate;margin-right:auto;margin-left:auto;"><tbody>
+            <tr>
+              <td style="padding:0px">
+                <br>
+                <p style="text-align:right;font-size:small;">
+                  Template from <a href="https://github.com/jonbarron/jonbarron_website"> Jon Barron's website.</a>
+              </td>
+            </tr>
+          </tbody></table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>
