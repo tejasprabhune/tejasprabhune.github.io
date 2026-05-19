@@ -1,0 +1,20 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const posts = [
+  { slug: 'marginalia', title: 'marginalia', date: '' },
+];
+---
+<Layout title="blog — tejas prabhune">
+  <section class="blog-index">
+    <h1>writing</h1>
+    <ul class="post-list">
+      {posts.map(post => (
+        <li>
+          <a href={`/blog/${post.slug}`}>{post.title}</a>
+          {post.date && <span class="post-date">{post.date}</span>}
+        </li>
+      ))}
+    </ul>
+  </section>
+</Layout>

@@ -1,0 +1,17 @@
+{
+  "name": "tejasprabhune-github-io",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@myriaddreamin/typst-ts-node-compiler": "^0.7.0-rc2",
+    "@myriaddreamin/typst-ts-renderer": "^0.7.0-rc2",
+    "@myriaddreamin/typst.ts": "0.7.0-rc2",
+    "astro": "^5.0.0",
+    "astro-typst": "^0.12.3",
+    "cheerio": "^1.0.0"
+  }
+}

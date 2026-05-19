@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Tejas Prabhune' } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <meta name="description" content={description}>
+  <!-- Adobe Fonts — replace YOUR_KIT_ID with your actual kit ID from use.typekit.net -->
+  <link rel="stylesheet" href="https://use.typekit.net/YOUR_KIT_ID.css">
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header>
+    <nav>
+      <a href="/">home</a>
+      <span class="sep">/</span>
+      <a href="/research">research</a>
+      <span class="sep">/</span>
+      <a href="/blog">blog</a>
+      <span class="sep">/</span>
+      <a href="https://tejasprabhune.github.io/kiln" target="_blank" rel="noopener">kiln</a>
+      <span class="sep">/</span>
+      <a href="https://tejasprabhune.github.io/bv" target="_blank" rel="noopener">bv</a>
+      <span class="sep">/</span>
+      <a href="https://tejasprabhune.github.io/kern" target="_blank" rel="noopener">kern</a>
+    </nav>
+  </header>
+
+  <main>
+    <slot />
+  </main>
+</body>
+</html>
