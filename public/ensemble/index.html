@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ensemble</title>
+  <link rel="stylesheet" href="https://use.typekit.net/bsk0vur.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="wide">
+  <header>
+    <a class="wordmark" href="index.html">ensemble</a>
+    <p class="tagline">Multi-user, multi-agent RL environments.</p>
+    <nav>
+      <a href="index.html" class="active">Overview</a>
+      <a href="docs.html">Docs</a>
+      <a href="scenarios.html">Scenarios</a>
+      <a href="plank.html">Plank</a>
+      <a href="personas.html">Personas</a>
+    </nav>
+  </header>
+
+  <section>
+    <h2>What it is</h2>
+    <p>
+      Ensemble is a framework for building RL environments where multiple simulated users
+      and multiple agents share a single typed world. You write the world in Rust, the
+      scenarios in Python, and the framework handles message routing, tool dispatch, the
+      trace log, and the grader. Plank is the worked example: a small fake SaaS with
+      SQLite-backed state, six tools, and five personas.
+    </p>
+    <p>
+      The framework is small on purpose. The core scheduler is one tokio task per actor
+      and an event log; the LLM layer is a single <code>LLMBackend</code> trait with
+      Anthropic, OpenAI, vLLM, and mock implementations; the Python sdk is one
+      <code>@scenario</code> decorator and a <code>World</code> handle.
+    </p>
+  </section>
+
+  <section>
+    <h2>Install</h2>
+<pre><code>uv sync
+cargo build -p ensemble-cli</code></pre>
+    <p>
+      <code>uv sync</code> builds the native extension via maturin and installs the
+      Python sdk, the Plank example, and the training package. <code>cargo build</code>
+      produces the <code>ensemble</code> CLI under <code>./target/debug/</code>.
+    </p>
+    <p>The <a href="docs.html">docs page</a> has a longer quickstart and walks through each part of the architecture.</p>
+  </section>
+
+  <section>
+    <h2>Refund storm, replayed</h2>
+    <p>
+      The trace below is a deterministic mock run of <code>plank.refund_storm</code>:
+      three users, two agents, shared SQLite world. Scrub the timeline to step through
+      events; the right panel shows tool effects on world state.
+    </p>
+
+    <div class="viewer" id="viewer">
+      <div class="controls">
+        <button id="playBtn">play</button>
+        <button id="prevBtn">prev</button>
+        <button id="nextBtn">next</button>
+        <input type="range" id="slider" min="0" max="0" value="0">
+        <span id="tickLabel">0 / 0</span>
+      </div>
+      <div class="stage">
+        <div class="panel" id="messagesPanel"><h4>actors</h4></div>
+        <div class="panel" id="toolsPanel"><h4>tool calls</h4></div>
+        <div class="panel" id="diffPanel"><h4>state changes</h4></div>
+      </div>
+    </div>
+
+    <p class="muted">
+      In a real run the agents are LLMs. This baked transcript uses the mock backend
+      for reproducibility, so the trace is identical across machines.
+    </p>
+  </section>
+
+  <section>
+    <h2>What's in the box</h2>
+    <ul>
+      <li><a href="docs.html">docs</a>, quickstart and architecture walk-through.</li>
+      <li><a href="scenarios.html">scenarios</a>, the <code>@scenario</code> decorator and the <code>async with world.simulate()</code> power-user path.</li>
+      <li><a href="plank.html">plank</a>, the worked example world.</li>
+      <li><a href="personas.html">personas</a>, persona TOML spec and the DPO+LoRA training pipeline.</li>
+    </ul>
+  </section>
+
+  <footer class="site">
+    Source on <a href="https://github.com/tejasprabhune">tejasprabhune</a>. Built in Rust and Python.
+  </footer>
+
+  <script src="viewer.js"></script>
+</body>
+</html>
