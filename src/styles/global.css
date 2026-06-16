@@ -137,6 +137,31 @@ nav a:hover {
   text-decoration-color: var(--dark);
 }
 
+/* Contact list */
+.contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em 1.4em;
+  font-size: clamp(0.92rem, 1.1vw, 1.1rem);
+}
+
+.contact-list a {
+  color: var(--dark);
+  text-decoration: underline;
+  text-decoration-color: var(--sage);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
+  transition: color 0.18s, text-decoration-color 0.18s;
+}
+
+.contact-list a:hover {
+  color: var(--sage);
+  text-decoration-color: var(--dark);
+}
+
 /* Work list */
 .work-list {
   list-style: none;
