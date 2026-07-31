@@ -7,12 +7,11 @@ interface Props {
 }
 
 const { title, description = 'Tejas Prabhune' } = Astro.props;
-const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 
 const nav = [
-  { href: '/', label: 'index' },
-  { href: '/research', label: 'research' },
-  { href: '/blog', label: 'writing' },
+  { href: '/', label: 'Index' },
+  { href: '/research', label: 'Research' },
+  { href: '/blog', label: 'Writing' },
 ];
 ---
 <!DOCTYPE html>
@@ -25,23 +24,12 @@ const nav = [
   <meta name="color-scheme" content="light">
 </head>
 <body>
-  <header class="masthead">
-    <nav class="page">
-      {nav.map(item => (
-        <a href={item.href} aria-current={path === item.href ? 'page' : undefined}>{item.label}</a>
-      ))}
-    </nav>
-  </header>
+  <nav>
+    {nav.map(item => <a href={item.href}>{item.label}</a>)}
+  </nav>
 
   <main>
     <slot />
   </main>
-
-  <footer class="colophon">
-    <div class="page">
-      <span>tejas prabhune</span>
-      <span>{new Date().getFullYear()}</span>
-    </div>
-  </footer>
 </body>
 </html>

@@ -5,87 +5,70 @@ const pubs = [
   {
     title: 'Multimodal Pretraining for Vocal Tract Modeling',
     authors: [['Tejas S. Prabhune', true], ['Bohan Yu', false], ['Rishi Jain', false], ['Peter Wu', false], ['Gopala K. Anumanchipalli', false]],
-    venue: 'paper pending · 2024',
+    venue: 'Paper pending, 2024',
     href: 'https://arxiv.org/pdf/2310.16287',
     media: { type: 'video', src: '/images/mri.mp4' },
   },
   {
     title: 'Towards Streaming Speech-to-Avatar Synthesis',
     authors: [['Tejas S. Prabhune', true], ['Peter Wu', false], ['Bohan Yu', false], ['Gopala K. Anumanchipalli', false]],
-    venue: 'asru demo · 2023',
+    venue: 'ASRU Demo, 2023',
     href: 'https://arxiv.org/pdf/2310.16287',
     media: { type: 'video', src: '/images/demo_short_vowels.mp4' },
   },
   {
     title: 'Contrastive learning-based pretraining improves representation and transferability of diabetic retinopathy classification models',
     authors: [['Minhaj Nur Alam', false], ['Rikiya Yamashita', false], ['Vignav Ramesh', false], ['Tejas S. Prabhune', true], ['Jennifer I. Lim', false], ['Robison Vernon Paul Chan', false], ['Joelle Hallak', false], ['Theodore Leng', false], ['Daniel Rubin', false]],
-    venue: 'nature scientific reports · 2023',
+    venue: 'Nature Scientific Reports, 2023',
     href: 'https://www.nature.com/articles/s41598-023-33365-y',
     media: { type: 'image', src: '/images/diabetic_retinopathy.webp' },
   },
   {
     title: 'Dataset-Agnostic Vessel Segmentation of Retinal Fundus Images by a Vector Quantized Variational Autoencoder',
     authors: [['Tejas S. Prabhune', true], ['David Walz', false]],
-    venue: 'journal of student research · 2021',
+    venue: 'Journal of Student Research, 2021',
     href: 'https://www.jsr.org/hs/index.php/path/article/download/2280/887',
     media: { type: 'image', src: '/images/seg.png' },
   },
 ];
-
-const pad = (i: number) => String(i + 1).padStart(2, '0');
 ---
-<Layout title="research — tejas prabhune" description="Publications by Tejas Prabhune">
-  <section class="section-head page">
-    <p class="label">research</p>
-    <h1>publications</h1>
-    <div class="prose">
-      <p>
-        i studied eecs at uc berkeley and worked at the berkeley speech group inside
-        berkeley artificial intelligence research (bair), advised by dr. gopala k.
-        anumanchipalli, peter wu, cheol jun cho, and jiachen lian.
-      </p>
-      <p>
-        my work there covered visualizing the vocal tract with speech-driven 3d avatars,
-        brain-computer interfaces for virtual embodiment, and generating realistic
-        audio-visual dialogue with avatar-based llms.
-      </p>
-      <p>
-        <a href="mailto:prabhune@berkeley.edu">email</a> ·
-        <a href="/data/TejasPrabhuneResume.pdf">resume</a> ·
-        <a href="https://scholar.google.com/citations?user=QI1zl84AAAAJ" target="_blank" rel="noopener">google scholar</a>
-      </p>
-    </div>
-  </section>
+<Layout title="Research — Tejas Prabhune" description="Publications by Tejas Prabhune">
+  <div class="stack">
+    <h1>Research</h1>
 
-  <section class="page">
-    <ol class="pubs">
-      {pubs.map((pub, i) => (
-        <li class="pub">
-          <span class="thing-n">{pad(i)}</span>
-          <div class="pub-media">
-            {pub.media.type === 'video' ? (
-              <video src={pub.media.src} muted autoplay loop playsinline></video>
-            ) : (
-              <img src={pub.media.src} alt="" loading="lazy" />
-            )}
-          </div>
-          <div class="pub-body">
-            <p class="pub-title">{pub.title}</p>
-            <p class="pub-authors">
-              {pub.authors.map(([name, isMe], j) => (
-                <>
-                  {j > 0 && ', '}
-                  {isMe ? <strong>{name}</strong> : name}
-                </>
-              ))}
-            </p>
-            <p class="pub-venue">{pub.venue}</p>
-            <p class="pub-links">
-              <a href={pub.href} target="_blank" rel="noopener">paper</a>
-            </p>
-          </div>
+    <p>
+      I studied EECS at UC Berkeley and worked at the Berkeley Speech Group inside
+      Berkeley Artificial Intelligence Research (BAIR), advised by Dr. Gopala K.
+      Anumanchipalli, Peter Wu, Cheol Jun Cho, and Jiachen Lian. My work there covered
+      visualizing the vocal tract with speech-driven 3D avatars, brain-computer
+      interfaces for virtual embodiment, and generating realistic audio-visual dialogue
+      with avatar-based LLMs.
+    </p>
+
+    <p>
+      <a href="mailto:prabhune@berkeley.edu">Email</a>,
+      <a href="/data/TejasPrabhuneResume.pdf">Resume</a>,
+      <a href="https://scholar.google.com/citations?user=QI1zl84AAAAJ" target="_blank" rel="noopener">Google Scholar</a>
+    </p>
+
+    <ul class="pubs">
+      {pubs.map(pub => (
+        <li>
+          <p>
+            <span class="title">{pub.title}</span><br>
+            {pub.authors.map(([name, isMe], i) => (
+              <>
+                {i > 0 && ', '}
+                {isMe ? <strong>{name}</strong> : name}
+              </>
+            ))}<br>
+            {pub.venue}. <a href={pub.href} target="_blank" rel="noopener">Paper</a>
+          </p>
+          {pub.media.type === 'video'
+            ? <video class="media" src={pub.media.src} muted autoplay loop playsinline></video>
+            : <img class="media" src={pub.media.src} alt="" loading="lazy" />}
         </li>
       ))}
-    </ol>
-  </section>
+    </ul>
+  </div>
 </Layout>

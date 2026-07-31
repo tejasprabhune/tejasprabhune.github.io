@@ -2,29 +2,21 @@
 import Layout from '../../layouts/Layout.astro';
 
 const posts = [
-  { slug: 'marginalia', title: 'marginalia', date: '' },
-  { slug: 'charting_a_course', title: 'charting a course', date: '' },
+  { slug: 'marginalia', title: 'Marginalia', date: '' },
+  { slug: 'charting_a_course', title: 'Charting a Course', date: '' },
 ];
-
-const pad = (i: number) => String(i + 1).padStart(2, '0');
 ---
-<Layout title="writing — tejas prabhune">
-  <section class="section-head page">
-    <p class="label">writing</p>
-    <h1>notes</h1>
-  </section>
+<Layout title="Writing — Tejas Prabhune">
+  <div class="stack">
+    <h1>Writing</h1>
 
-  <section class="page" style="padding-bottom: clamp(3rem, 9vh, 6rem)">
-    <ul class="post-list">
-      {posts.map((post, i) => (
+    <ul class="posts">
+      {posts.map(post => (
         <li>
-          <a href={`/blog/${post.slug}`}>
-            <span class="post-n">{pad(i)}</span>
-            <span>{post.title}</span>
-            {post.date && <span class="post-date">{post.date}</span>}
-          </a>
+          <a href={`/blog/${post.slug}`}>{post.title}</a>
+          {post.date && <span> — {post.date}</span>}
         </li>
       ))}
     </ul>
-  </section>
+  </div>
 </Layout>
