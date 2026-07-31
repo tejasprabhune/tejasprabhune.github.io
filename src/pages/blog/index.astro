@@ -5,15 +5,24 @@ const posts = [
   { slug: 'marginalia', title: 'marginalia', date: '' },
   { slug: 'charting_a_course', title: 'charting a course', date: '' },
 ];
+
+const pad = (i: number) => String(i + 1).padStart(2, '0');
 ---
-<Layout title="blog — tejas prabhune">
-  <section class="blog-index">
-    <h1>writing</h1>
+<Layout title="writing — tejas prabhune">
+  <section class="section-head page">
+    <p class="label">writing</p>
+    <h1>notes</h1>
+  </section>
+
+  <section class="page" style="padding-bottom: clamp(3rem, 9vh, 6rem)">
     <ul class="post-list">
-      {posts.map(post => (
+      {posts.map((post, i) => (
         <li>
-          <a href={`/blog/${post.slug}`}>{post.title}</a>
-          {post.date && <span class="post-date">{post.date}</span>}
+          <a href={`/blog/${post.slug}`}>
+            <span class="post-n">{pad(i)}</span>
+            <span>{post.title}</span>
+            {post.date && <span class="post-date">{post.date}</span>}
+          </a>
         </li>
       ))}
     </ul>

@@ -1,57 +1,130 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+const interests = [
+  'machine learning',
+  'systems',
+  'economics',
+  'social science',
+  'debate',
+  'painting',
+  'table tennis',
+];
+
+const things = [
+  {
+    name: 'sim francisco',
+    desc: 'modeling distributionally accurate city simulations.',
+    links: [{ label: 'simfrancisco.org', href: 'https://simfrancisco.org' }],
+  },
+  {
+    name: 'wispr',
+    desc: 'post-trained and deployed multilingual models.',
+    links: [{ label: 'wisprflow.ai', href: 'https://wisprflow.ai' }],
+  },
+  {
+    name: 'machine learning @ berkeley',
+    desc: 'ex-president (sp26), ex-vp of education (fa25).',
+    links: [{ label: 'ml.berkeley.edu', href: 'https://ml.berkeley.edu' }],
+  },
+  {
+    name: 'cs 189/289',
+    desc: 'lead ta ×2 for intro to machine learning. wrote the homeworks on information theory, transformers, diffusion, and flow matching.',
+    links: [],
+  },
+  {
+    name: 'berkeley speech group',
+    desc: 'speech-driven 3d avatars of the vocal tract, brain-computer interfaces for virtual embodiment, and audio-visual dialogue from avatar-based llms.',
+    links: [
+      { label: 'publications', href: '/research' },
+      { label: 'google scholar', href: 'https://scholar.google.com/citations?user=QI1zl84AAAAJ&hl=en' },
+    ],
+  },
+  {
+    name: 'npda debate',
+    desc: 'npte champion, 2026. built golden turn to archive rounds and coach the circuit.',
+    links: [
+      { label: 'npdadebate.com', href: 'https://npdadebate.com/' },
+      { label: 'goldenturn.org', href: 'https://goldenturn.org/' },
+    ],
+  },
+  {
+    name: 'research',
+    desc: 'contrastive learning-based pretraining improves representation and transferability of diabetic retinopathy classification models. nature scientific reports, 2023.',
+    links: [{ label: 'paper', href: 'https://www.nature.com/articles/s41598-023-33365-y' }],
+  },
+];
+
+const pad = (i: number) => String(i + 1).padStart(2, '0');
 ---
 <Layout title="Tejas Prabhune">
-  <section class="hero">
-    <div class="hero-inner">
-      <p class="page-name">tejas prabhune</p>
-      <p class="bio">
-        i'm a berkeley new-grad working on <span class="animate-color">gpu efficiency</span>
-        and user simulation for post-training.
-      </p>
+  <section class="hero page">
+    <span class="marker" aria-hidden="true"></span>
+    <h1 class="name">tejas prabhune</h1>
+    <p class="bio">
+      i'm a berkeley grad working on distributionally accurate city simulations at
+      <a href="https://simfrancisco.org" target="_blank" rel="noopener">sim francisco</a>.
+    </p>
+  </section>
 
-      <ul class="contact-list">
-        <li><a href="mailto:prabhune@berkeley.edu">prabhune@berkeley.edu</a></li>
-        <li><a href="https://twitter.com/tejas_prabhune" target="_blank" rel="noopener">@tejas_prabhune</a></li>
-        <li><a href="https://www.linkedin.com/in/tejas-prabhune/" target="_blank" rel="noopener">linkedin</a></li>
-        <li><a href="https://scholar.google.com/citations?user=QI1zl84AAAAJ&hl=en" target="_blank" rel="noopener">google scholar</a></li>
-      </ul>
+  <section class="block page">
+    <p class="label">interests</p>
+    <ul class="terms">
+      {interests.map((term, i) => <li data-n={pad(i)}>{term}</li>)}
+      <li class="trying" data-n={pad(interests.length)}>trying new things</li>
+    </ul>
+  </section>
 
-      <ul class="work-list">
-        <li class="work-item">
-          <span class="work-role">distributionally accurate city simulations</span>
-          <span class="work-dot" aria-hidden="true"></span>
-          <span class="work-place">
-            <a href="https://simfrancisco.org" target="_blank" rel="noopener">simfrancisco</a>
-          </span>
-        </li>
-        <li class="work-item">
-          <span class="work-role">multilingual post-training &amp; ml systems</span>
-          <span class="work-dot" aria-hidden="true"></span>
-          <span class="work-place">Wispr</span>
-        </li>
-        <li class="work-item">
-          <span class="work-role">virtual avatars, bci &amp; speech modeling</span>
-          <span class="work-dot" aria-hidden="true"></span>
-          <span class="work-place">Berkeley Speech Group</span>
-        </li>
-        <li class="work-item">
-          <span class="work-role">parliamentary debate &amp; coaching</span>
-          <span class="work-dot" aria-hidden="true"></span>
-          <span class="work-place">berkeley</span>
-        </li>
-        <li class="work-item">
-          <span class="work-role">side quests</span>
-          <span class="work-dot" aria-hidden="true"></span>
-          <span class="work-place">
-            <a href="https://tejasprabhune.github.io/bv-registry/about.html" target="_blank" rel="noopener">bv</a>,
-            <a href="https://tejasprabhune.github.io/kiln" target="_blank" rel="noopener">kiln</a>,
-            <a href="https://tejasprabhune.github.io/kern" target="_blank" rel="noopener">kern</a>,
-            <a href="https://goldenturn.org" target="_blank" rel="noopener">goldenturn</a>,
-            <a href="https://goldenturn.org/recordings" target="_blank" rel="noopener">npdavideos</a>
-          </span>
-        </li>
-      </ul>
+  <section class="block page">
+    <p class="label">contact</p>
+    <ul class="contact">
+      <li><a href="mailto:prabhune@berkeley.edu">prabhune@berkeley.edu</a></li>
+      <li><a href="https://twitter.com/tejas_prabhune" target="_blank" rel="noopener">@tejas_prabhune</a></li>
+    </ul>
+  </section>
+
+  <section class="block page">
+    <button class="disclosure" type="button" aria-expanded="false" aria-controls="things-drawer">
+      <span>things i've done</span>
+      <span class="disclosure-sign" aria-hidden="true"></span>
+    </button>
+
+    <div class="drawer" id="things-drawer" data-open="false">
+      <div>
+        <ol class="things">
+          {things.map((thing, i) => (
+            <li class="thing">
+              <span class="thing-n">{pad(i)}</span>
+              <span class="thing-name">{thing.name}</span>
+              <div class="thing-body">
+                <p class="thing-desc">{thing.desc}</p>
+                {thing.links.length > 0 && (
+                  <p class="thing-links">
+                    {thing.links.map(link => (
+                      <a
+                        href={link.href}
+                        target={link.href.startsWith('http') ? '_blank' : undefined}
+                        rel={link.href.startsWith('http') ? 'noopener' : undefined}
+                      >{link.label}</a>
+                    ))}
+                  </p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   </section>
 </Layout>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>('.disclosure');
+  const drawer = document.getElementById('things-drawer');
+
+  button?.addEventListener('click', () => {
+    const open = button.getAttribute('aria-expanded') === 'true';
+    button.setAttribute('aria-expanded', String(!open));
+    drawer?.setAttribute('data-open', String(!open));
+  });
+</script>

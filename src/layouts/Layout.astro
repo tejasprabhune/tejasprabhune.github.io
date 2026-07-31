@@ -7,6 +7,13 @@ interface Props {
 }
 
 const { title, description = 'Tejas Prabhune' } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+const nav = [
+  { href: '/', label: 'index' },
+  { href: '/research', label: 'research' },
+  { href: '/blog', label: 'writing' },
+];
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -15,26 +22,26 @@ const { title, description = 'Tejas Prabhune' } = Astro.props;
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
   <meta name="description" content={description}>
-  <!-- Adobe Fonts — replace YOUR_KIT_ID with your actual kit ID from use.typekit.net -->
-  <link rel="stylesheet" href="https://use.typekit.net/YOUR_KIT_ID.css">
+  <meta name="color-scheme" content="light">
 </head>
 <body>
-  <div class="grain" aria-hidden="true"></div>
-
-  <header>
-    <nav>
-      <a href="/">home</a>
-      <span class="sep">/</span>
-      <a href="/research">research</a>
-      <span class="sep">/</span>
-      <a href="/blog">blog</a>
-      <span class="sep">/</span>
-      <a href="https://simfrancisco.org" target="_blank" rel="noopener">simfrancisco</a>
+  <header class="masthead">
+    <nav class="page">
+      {nav.map(item => (
+        <a href={item.href} aria-current={path === item.href ? 'page' : undefined}>{item.label}</a>
+      ))}
     </nav>
   </header>
 
   <main>
     <slot />
   </main>
+
+  <footer class="colophon">
+    <div class="page">
+      <span>tejas prabhune</span>
+      <span>{new Date().getFullYear()}</span>
+    </div>
+  </footer>
 </body>
 </html>
