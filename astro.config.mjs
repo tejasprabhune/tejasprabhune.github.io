@@ -7,6 +7,7 @@ export default defineConfig({
     typst({
       options: { remPx: 14 },
       target: (id) => id.endsWith('.html.typ') ? 'html' : 'svg',
+      fontArgs: [{ fontPaths: ['./fonts'] }],
     }),
   ],
 });
