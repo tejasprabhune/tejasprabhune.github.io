@@ -24,7 +24,7 @@ const things = [
   },
   {
     name: 'Research',
-    desc: 'speech-driven 3D avatars of the vocal tract, brain-computer interfaces for virtual embodiment, and audio-visual dialogue from avatar-based LLMs at the Berkeley Speech Group. Contrastive pretraining for diabetic retinopathy classification at SAIL. Published in ASRU (2023), Nature Scientific Reports (2023), and the Journal of Student Research (2021).',
+    desc: 'speech-driven 3D avatars of the vocal tract, brain-computer interfaces for virtual embodiment, and audio-visual dialogue from avatar-based LLMs at the Berkeley Speech Group. Contrastive pretraining for diabetic retinopathy classification at SAIL. Published in ASRU (2023) and Nature Scientific Reports (2023).',
     links: [
       { label: 'Publications', href: '/research' },
       { label: 'Google Scholar', href: 'https://scholar.google.com/citations?user=QI1zl84AAAAJ&hl=en' },
@@ -46,7 +46,8 @@ const things = [
 
     <p>
       I'm a big fan of machine learning, systems, economics, social science,
-      debate, painting, and table tennis. Trying new things!
+      debate, painting, and table tennis. Working on something new! I love
+      meeting new people, so please reach out and we can grab coffee :)
     </p>
 
     <ul class="contact">
@@ -64,7 +65,7 @@ const things = [
           <ul class="things">
             {things.map(thing => (
               <li>
-                <span class="name">{thing.name}</span> — {thing.desc}
+                <span class="name">{thing.name}</span>: {thing.desc}
                 {thing.links.map((link, i) => (<>{i > 0 ? ', ' : ' '}<a href={link.href} target={link.href.startsWith('http') ? '_blank' : undefined} rel={link.href.startsWith('http') ? 'noopener' : undefined}>{link.label}</a></>))}
               </li>
             ))}

@@ -6,7 +6,7 @@ const posts = [
   { slug: 'charting_a_course', title: 'Charting a Course', date: '' },
 ];
 ---
-<Layout title="Writing — Tejas Prabhune">
+<Layout title="Writing: Tejas Prabhune">
   <div class="stack">
     <h1>Writing</h1>
 
@@ -14,7 +14,7 @@ const posts = [
       {posts.map(post => (
         <li>
           <a href={`/blog/${post.slug}`}>{post.title}</a>
-          {post.date && <span> — {post.date}</span>}
+          {post.date && <span>: {post.date}</span>}
         </li>
       ))}
     </ul>
