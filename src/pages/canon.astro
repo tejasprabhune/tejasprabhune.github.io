@@ -1,0 +1,500 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev';
+---
+<Layout title="Canon: Tejas Prabhune" description="Books, papers and essays, with what I thought of them">
+  <div class="stack">
+    <h1>Canon</h1>
+    <p>What I'm reading, and what I made of it.</p>
+
+    <div id="canon" data-api={API}>
+      <p class="canon-status">Loading…</p>
+    </div>
+
+    <p class="canon-editlink"><button type="button" id="edit-toggle" class="disclosure">edit</button></p>
+
+    <form id="password-form" hidden>
+      <input type="password" id="password" placeholder="password" autocomplete="current-password">
+      <button type="submit">unlock</button>
+      <span id="password-error"></span>
+    </form>
+  </div>
+
+  <div id="dictation" hidden>
+    <button type="button" id="talk">Hold to talk</button>
+    <span id="talk-status"></span>
+  </div>
+</Layout>
+
+<script>
+  type Entry = {
+    id: string;
+    category_id: string;
+    title: string;
+    url: string | null;
+    thoughts: string | null;
+    status: 'read' | 'future';
+    priority: number | null;
+    created_at: string;
+    file_id: string | null;
+    filename: string | null;
+  };
+  type Category = { id: string; name: string; ord: number; entries: Entry[] };
+
+  const root = document.getElementById('canon')!;
+  const API = root.dataset.api!;
+  const PASSWORD_KEY = 'canon-password';
+
+  let categories: Category[] = [];
+  let password: string | null = sessionStorage.getItem(PASSWORD_KEY);
+  let editing = false;
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const linkFor = (entry: Entry) =>
+    entry.url ?? (entry.file_id ? `${API}/api/canon/files/${entry.file_id}` : null);
+
+  async function api(path: string, options: RequestInit = {}) {
+    const headers = new Headers(options.headers);
+    if (password) headers.set('x-canon-password', password);
+    const response = await fetch(`${API}${path}`, { ...options, headers });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(body.error ?? 'request failed');
+    }
+    return response.status === 204 ? null : response.json();
+  }
+
+  async function load() {
+    try {
+      categories = await api('/api/canon');
+      render();
+    } catch {
+      root.innerHTML = '<p class="canon-status">Could not reach the reading list.</p>';
+    }
+  }
+
+  function render() {
+    if (!categories.length) {
+      root.innerHTML = editing
+        ? ''
+        : '<p class="canon-status">Nothing here yet.</p>';
+    } else {
+      root.innerHTML = '';
+    }
+
+    for (const category of categories) {
+      const section = document.createElement('section');
+      section.className = 'canon-category';
+
+      const heading = document.createElement('h2');
+      heading.textContent = category.name;
+      section.append(heading);
+
+      const read = category.entries.filter(e => e.status === 'read');
+      const future = category.entries.filter(e => e.status === 'future');
+
+      if (read.length) {
+        const grid = document.createElement('div');
+        grid.className = 'canon-grid';
+        read.forEach(entry => grid.append(card(entry)));
+        section.append(grid);
+      }
+
+      if (future.length) {
+        const label = document.createElement('h3');
+        label.textContent = 'For the future';
+        section.append(label);
+
+        const list = document.createElement('ol');
+        list.className = 'canon-future';
+        future.forEach(entry => list.append(futureItem(entry)));
+        section.append(list);
+      }
+
+      if (editing) {
+        section.append(entryForm(category));
+      }
+      root.append(section);
+    }
+
+    if (editing) root.append(categoryForm());
+  }
+
+  function card(entry: Entry) {
+    const article = document.createElement('article');
+    article.className = 'canon-card';
+
+    const title = document.createElement('p');
+    title.className = 'canon-title';
+    const href = linkFor(entry);
+    if (href) {
+      const anchor = document.createElement('a');
+      anchor.href = href;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener';
+      anchor.textContent = entry.title;
+      title.append(anchor);
+    } else {
+      title.textContent = entry.title;
+    }
+    article.append(title);
+
+    const date = document.createElement('p');
+    date.className = 'canon-date';
+    date.textContent = formatDate(entry.created_at);
+    article.append(date);
+
+    if (entry.thoughts) {
+      const thoughts = document.createElement('p');
+      thoughts.className = 'canon-thoughts';
+      thoughts.textContent = entry.thoughts;
+      article.append(thoughts);
+    }
+
+    if (editing) article.append(editControls(entry));
+    return article;
+  }
+
+  function futureItem(entry: Entry) {
+    const item = document.createElement('li');
+
+    const href = linkFor(entry);
+    if (href) {
+      const anchor = document.createElement('a');
+      anchor.href = href;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener';
+      anchor.textContent = entry.title;
+      item.append(anchor);
+    } else {
+      item.append(entry.title);
+    }
+    if (entry.thoughts) {
+      const note = document.createElement('span');
+      note.className = 'canon-note';
+      note.textContent = ` ${entry.thoughts}`;
+      item.append(note);
+    }
+    if (editing) item.append(editControls(entry));
+    return item;
+  }
+
+  function editControls(entry: Entry) {
+    const wrap = document.createElement('p');
+    wrap.className = 'canon-controls';
+
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.textContent = 'edit';
+    edit.addEventListener('click', () => openEditor(entry));
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = 'delete';
+    remove.addEventListener('click', async () => {
+      if (!confirm(`Delete "${entry.title}"?`)) return;
+      await api(`/api/canon/entries/${entry.id}`, { method: 'DELETE' });
+      await load();
+    });
+
+    wrap.append(edit, remove);
+    return wrap;
+  }
+
+  /** Shared field set for both creating and editing an entry. */
+  function fields(entry?: Entry) {
+    const title = input('text', 'Title', entry?.title ?? '');
+    const url = input('url', 'Link (optional)', entry?.url ?? '');
+
+    const thoughts = document.createElement('textarea');
+    thoughts.placeholder = 'Thoughts';
+    thoughts.rows = 4;
+    thoughts.value = entry?.thoughts ?? '';
+    thoughts.addEventListener('focus', () => setDictationTarget(thoughts));
+
+    const status = document.createElement('select');
+    for (const [value, label] of [['read', 'Reading / read'], ['future', 'For the future']]) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      status.append(option);
+    }
+    status.value = entry?.status ?? 'read';
+
+    const priority = input('number', 'Priority', entry?.priority?.toString() ?? '');
+    priority.hidden = status.value !== 'future';
+    status.addEventListener('change', () => {
+      priority.hidden = status.value !== 'future';
+    });
+
+    const file = document.createElement('input');
+    file.type = 'file';
+    file.accept = 'application/pdf';
+
+    return { title, url, thoughts, status, priority, file };
+  }
+
+  function input(type: string, placeholder: string, value: string) {
+    const element = document.createElement('input');
+    element.type = type;
+    element.placeholder = placeholder;
+    element.value = value;
+    return element;
+  }
+
+  function payload(f: ReturnType<typeof fields>) {
+    return {
+      title: f.title.value.trim(),
+      url: f.url.value.trim() || null,
+      thoughts: f.thoughts.value.trim() || null,
+      status: f.status.value,
+      priority: f.status.value === 'future' && f.priority.value ? Number(f.priority.value) : null,
+    };
+  }
+
+  async function uploadFile(entryId: string, file: HTMLInputElement) {
+    if (!file.files?.length) return;
+    const form = new FormData();
+    form.append('file', file.files[0]);
+    await api(`/api/canon/entries/${entryId}/file`, { method: 'POST', body: form });
+  }
+
+  function entryForm(category: Category) {
+    const form = document.createElement('form');
+    form.className = 'canon-form';
+
+    const f = fields();
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.textContent = `Add to ${category.name}`;
+
+    form.append(f.title, f.url, f.thoughts, f.status, f.priority, f.file, submit);
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!f.title.value.trim()) return;
+      submit.disabled = true;
+      try {
+        const entry = await api('/api/canon/entries', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ category_id: category.id, ...payload(f) }),
+        });
+        await uploadFile(entry.id, f.file);
+        await load();
+      } catch (error) {
+        alert((error as Error).message);
+        submit.disabled = false;
+      }
+    });
+    return form;
+  }
+
+  function openEditor(entry: Entry) {
+    const form = document.createElement('form');
+    form.className = 'canon-form';
+
+    const f = fields(entry);
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.textContent = 'Save';
+
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => render());
+
+    form.append(f.title, f.url, f.thoughts, f.status, f.priority, f.file, save, cancel);
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      save.disabled = true;
+      try {
+        await api(`/api/canon/entries/${entry.id}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload(f)),
+        });
+        await uploadFile(entry.id, f.file);
+        await load();
+      } catch (error) {
+        alert((error as Error).message);
+        save.disabled = false;
+      }
+    });
+
+    root.innerHTML = '';
+    const heading = document.createElement('h2');
+    heading.textContent = `Editing: ${entry.title}`;
+    root.append(heading, form);
+  }
+
+  function categoryForm() {
+    const form = document.createElement('form');
+    form.className = 'canon-form';
+
+    const name = input('text', 'New category', '');
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.textContent = 'Add category';
+
+    form.append(name, submit);
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!name.value.trim()) return;
+      try {
+        await api('/api/canon/categories', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name: name.value.trim(), ord: categories.length }),
+        });
+        await load();
+      } catch (error) {
+        alert((error as Error).message);
+      }
+    });
+    return form;
+  }
+
+  // Password gate
+  const editToggle = document.getElementById('edit-toggle') as HTMLButtonElement;
+  const passwordForm = document.getElementById('password-form') as HTMLFormElement;
+  const passwordInput = document.getElementById('password') as HTMLInputElement;
+  const passwordError = document.getElementById('password-error')!;
+
+  function enterEditing() {
+    editing = true;
+    passwordForm.hidden = true;
+    editToggle.textContent = 'done';
+    document.getElementById('dictation')!.hidden = false;
+    document.body.classList.add('dictating');
+    render();
+  }
+
+  editToggle.addEventListener('click', () => {
+    if (editing) {
+      editing = false;
+      editToggle.textContent = 'edit';
+      document.getElementById('dictation')!.hidden = true;
+      document.body.classList.remove('dictating');
+      render();
+      return;
+    }
+    passwordForm.hidden = !passwordForm.hidden;
+    if (!passwordForm.hidden) passwordInput.focus();
+  });
+
+  passwordForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    passwordError.textContent = '';
+    try {
+      await fetch(`${API}/api/canon/verify`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: passwordInput.value }),
+      }).then(response => {
+        if (!response.ok) throw new Error('wrong password');
+      });
+      password = passwordInput.value;
+      sessionStorage.setItem(PASSWORD_KEY, password);
+      passwordInput.value = '';
+      enterEditing();
+    } catch {
+      passwordError.textContent = 'wrong password';
+    }
+  });
+
+  // Push-to-talk dictation, filling whichever thoughts box was last focused.
+  const talk = document.getElementById('talk') as HTMLButtonElement;
+  const talkStatus = document.getElementById('talk-status')!;
+  let target: HTMLTextAreaElement | null = null;
+  let recorder: MediaRecorder | null = null;
+  let chunks: Blob[] = [];
+
+  function setDictationTarget(element: HTMLTextAreaElement) {
+    target = element;
+  }
+
+  async function startTalking() {
+    if (recorder) return;
+    if (!target) {
+      talkStatus.textContent = 'click a thoughts box first';
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunks = [];
+      recorder = new MediaRecorder(stream);
+      recorder.addEventListener('dataavailable', event => chunks.push(event.data));
+      recorder.addEventListener('stop', () => {
+        stream.getTracks().forEach(track => track.stop());
+        void sendAudio(new Blob(chunks, { type: recorder?.mimeType ?? 'audio/webm' }));
+        recorder = null;
+      });
+      recorder.start();
+      talk.classList.add('recording');
+      talkStatus.textContent = 'listening…';
+    } catch {
+      talkStatus.textContent = 'no microphone access';
+    }
+  }
+
+  function stopTalking() {
+    if (!recorder || recorder.state === 'inactive') return;
+    recorder.stop();
+    talk.classList.remove('recording');
+    talkStatus.textContent = 'transcribing…';
+  }
+
+  async function sendAudio(blob: Blob) {
+    if (!blob.size || !target) {
+      talkStatus.textContent = '';
+      return;
+    }
+    const form = new FormData();
+    form.append('file', blob, 'audio.webm');
+    try {
+      const result = await api('/api/canon/transcribe', { method: 'POST', body: form });
+      const text = (result.text ?? '').trim();
+      if (text) {
+        target.value = target.value ? `${target.value.trim()} ${text}` : text;
+      }
+      talkStatus.textContent = text ? '' : 'heard nothing';
+    } catch (error) {
+      talkStatus.textContent = (error as Error).message;
+    }
+  }
+
+  talk.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    void startTalking();
+  });
+  talk.addEventListener('pointerup', stopTalking);
+  talk.addEventListener('pointerleave', stopTalking);
+  talk.addEventListener('pointercancel', stopTalking);
+
+  if (password) {
+    // Re-check the stored password so a stale one drops back to read-only.
+    fetch(`${API}/api/canon/verify`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password }),
+    })
+      .then(response => {
+        if (response.ok) {
+          editing = true;
+          editToggle.textContent = 'done';
+          document.getElementById('dictation')!.hidden = false;
+    document.body.classList.add('dictating');
+        } else {
+          sessionStorage.removeItem(PASSWORD_KEY);
+          password = null;
+        }
+      })
+      .catch(() => {})
+      .finally(() => void load());
+  } else {
+    void load();
+  }
+</script>

@@ -26,46 +26,52 @@
   padding: 0;
 }
 
+html {
+  font-size: clamp(19px, 1.35vw, 26px);
+}
+
 body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
   font-size: 1rem;
-  line-height: 1.5;
+  line-height: 1.4;
   text-align: left;
   -webkit-font-smoothing: antialiased;
 }
 
 main,
 nav {
-  max-width: 42rem;
-  padding: 0 1.5rem;
+  max-width: 62rem;
+  padding: 0 1.25rem;
 }
 
 nav {
   padding-top: 2rem;
   display: flex;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 main {
-  padding-top: 3rem;
-  padding-bottom: 5rem;
+  padding-top: 3.5rem;
+  padding-bottom: 6rem;
 }
 
 h1 {
-  font-size: 1.75rem;
+  font-size: 3.25rem;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
 }
 
 h2 {
-  font-size: 1rem;
+  font-size: 1.5rem;
   font-weight: 500;
+  letter-spacing: -0.015em;
 }
 
 p {
-  max-width: 36rem;
+  max-width: 34rem;
 }
 
 a {
@@ -82,12 +88,18 @@ ul {
   list-style: none;
 }
 
+/* Beats the display rules further down that would otherwise
+   un-hide elements carrying the hidden attribute. */
+[hidden] {
+  display: none !important;
+}
+
 .stack > * + * {
-  margin-top: 1.5rem;
+  margin-top: 1.75rem;
 }
 
 .contact li + li {
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
 }
 
 /* Things I've Done */
@@ -156,6 +168,181 @@ ul {
   max-width: 20rem;
   height: auto;
   margin-top: 0.5rem;
+}
+
+/* Canon */
+.canon-category + .canon-category {
+  margin-top: 3.5rem;
+}
+
+.canon-category h2 {
+  margin-bottom: 1.5rem;
+}
+
+.canon-category h3 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 2.25rem 0 1rem;
+}
+
+.canon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: 2.25rem 2.5rem;
+}
+
+.canon-card p {
+  max-width: none;
+}
+
+.canon-title {
+  font-weight: 500;
+}
+
+.canon-date {
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
+}
+
+.canon-thoughts {
+  margin-top: 0.6rem;
+}
+
+.canon-future {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+
+.canon-future li + li {
+  margin-top: 0.75rem;
+}
+
+.canon-note {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.canon-status {
+  opacity: 0.6;
+}
+
+.canon-editlink {
+  margin-top: 4rem;
+  font-size: 0.8rem;
+}
+
+/* Editor */
+.canon-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+  max-width: 32rem;
+}
+
+.canon-form input,
+.canon-form textarea,
+.canon-form select,
+#password-form input {
+  font: inherit;
+  font-size: 0.9rem;
+  color: inherit;
+  background: none;
+  border: 1px solid var(--ink);
+  padding: 0.5rem 0.6rem;
+  width: 100%;
+  border-radius: 0;
+}
+
+.canon-form textarea {
+  resize: vertical;
+}
+
+.canon-form button,
+.canon-controls button,
+#password-form button {
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+  background: none;
+  border: 1px solid var(--ink);
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.canon-form button:hover,
+.canon-controls button:hover,
+#password-form button:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.canon-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.canon-controls button {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+}
+
+#password-form {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 24rem;
+  margin-top: 0.75rem;
+}
+
+#password-error {
+  font-size: 0.8rem;
+}
+
+/* Push to talk */
+#dictation {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem 1.5rem;
+  background: var(--paper);
+  border-top: 1px solid var(--ink);
+}
+
+#talk {
+  font: inherit;
+  font-weight: 500;
+  color: inherit;
+  background: none;
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  padding: 1.1rem 2.5rem;
+  min-width: 16rem;
+  min-height: 4rem;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+#talk.recording {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+#talk-status {
+  font-size: 0.85rem;
+}
+
+/* Keep the fixed talk bar from covering the end of the editor. */
+.dictating main {
+  padding-bottom: 12rem;
 }
 
 /* Blog */
