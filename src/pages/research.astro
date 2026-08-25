@@ -1,24 +1,65 @@
 ---
 import Layout from '../layouts/Layout.astro';
 
-const pubs = [
+type Media = { type: 'image' | 'video'; src: string } | null;
+
+const pubs: {
+  title: string;
+  authors: [string, boolean][];
+  venue: string;
+  href: string;
+  media: Media;
+}[] = [
   {
-    title: 'Multimodal Pretraining for Vocal Tract Modeling',
-    authors: [['Tejas S. Prabhune', true], ['Bohan Yu', false], ['Rishi Jain', false], ['Peter Wu', false], ['Gopala K. Anumanchipalli', false]],
-    venue: 'Paper pending, 2024',
-    href: 'https://arxiv.org/pdf/2310.16287',
+    title: 'Towards Accurate Phonetic Error Detection Through Phoneme Similarity Modeling',
+    authors: [
+      ['Xuanru Zhou', false], ['Jiachen Lian', false], ['Cheol Jun Cho', false],
+      ['Tejas Prabhune', true], ['Shuhe Li', false], ['William Li', false],
+      ['Rodrigo Ortiz', false], ['Zoe Ezzes', false], ['Jet Vonk', false],
+      ['Brittany Morin', false], ['Rian Bogley', false], ['Lisa Wauters', false],
+      ['Zachary Miller', false], ['Maria Gorno-Tempini', false], ['Gopala Anumanchipalli', false],
+    ],
+    venue: 'Interspeech, 2025',
+    href: 'https://arxiv.org/abs/2507.14346',
+    media: null,
+  },
+  {
+    title: 'Coding Speech Through Vocal Tract Kinematics',
+    authors: [
+      ['Cheol Jun Cho', false], ['Peter Wu', false], ['Tejas S. Prabhune', true],
+      ['Dhruv Agarwal', false], ['Gopala K. Anumanchipalli', false],
+    ],
+    venue: 'IEEE Journal of Selected Topics in Signal Processing, 2024',
+    href: 'https://arxiv.org/abs/2406.12998',
+    media: null,
+  },
+  {
+    title: 'Multimodal Segmentation for Vocal Tract Modeling',
+    authors: [
+      ['Rishi Jain', false], ['Bohan Yu', false], ['Peter Wu', false],
+      ['Tejas Prabhune', true], ['Gopala Anumanchipalli', false],
+    ],
+    venue: 'Interspeech, 2024',
+    href: 'https://arxiv.org/abs/2406.15754',
     media: { type: 'video', src: '/images/mri.mp4' },
   },
   {
     title: 'Towards Streaming Speech-to-Avatar Synthesis',
-    authors: [['Tejas S. Prabhune', true], ['Peter Wu', false], ['Bohan Yu', false], ['Gopala K. Anumanchipalli', false]],
+    authors: [
+      ['Tejas S. Prabhune', true], ['Peter Wu', false], ['Bohan Yu', false],
+      ['Gopala K. Anumanchipalli', false],
+    ],
     venue: 'ASRU Demo, 2023',
     href: 'https://arxiv.org/pdf/2310.16287',
     media: { type: 'video', src: '/images/demo_short_vowels.mp4' },
   },
   {
     title: 'Contrastive learning-based pretraining improves representation and transferability of diabetic retinopathy classification models',
-    authors: [['Minhaj Nur Alam', false], ['Rikiya Yamashita', false], ['Vignav Ramesh', false], ['Tejas S. Prabhune', true], ['Jennifer I. Lim', false], ['Robison Vernon Paul Chan', false], ['Joelle Hallak', false], ['Theodore Leng', false], ['Daniel Rubin', false]],
+    authors: [
+      ['Minhaj Nur Alam', false], ['Rikiya Yamashita', false], ['Vignav Ramesh', false],
+      ['Tejas S. Prabhune', true], ['Jennifer I. Lim', false], ['Robison Vernon Paul Chan', false],
+      ['Joelle Hallak', false], ['Theodore Leng', false], ['Daniel Rubin', false],
+    ],
     venue: 'Nature Scientific Reports, 2023',
     href: 'https://www.nature.com/articles/s41598-023-33365-y',
     media: { type: 'image', src: '/images/diabetic_retinopathy.webp' },
@@ -32,34 +73,29 @@ const pubs = [
     <p>
       I studied EECS at UC Berkeley and worked at the Berkeley Speech Group inside
       Berkeley Artificial Intelligence Research (BAIR), advised by Dr. Gopala K.
-      Anumanchipalli, Peter Wu, Cheol Jun Cho, and Jiachen Lian. My work there covered
-      visualizing the vocal tract with speech-driven 3D avatars, brain-computer
-      interfaces for virtual embodiment, and generating realistic audio-visual dialogue
-      with avatar-based LLMs.
+      Anumanchipalli, Peter Wu, Cheol Jun Cho, and Jiachen Lian.
     </p>
 
     <p>
-      <a href="mailto:prabhune@berkeley.edu">Email</a>,
-      <a href="/data/TejasPrabhuneResume.pdf">Resume</a>,
-      <a href="https://scholar.google.com/citations?user=QI1zl84AAAAJ" target="_blank" rel="noopener">Google Scholar</a>
+      <a class="ext" href="https://scholar.google.com/citations?user=QI1zl84AAAAJ" target="_blank" rel="noopener">Google Scholar</a>
     </p>
 
     <ul class="pubs">
       {pubs.map(pub => (
         <li>
           <p>
-            <span class="title">{pub.title}</span><br>
+            <a class="ext title" href={pub.href} target="_blank" rel="noopener">{pub.title}</a><br>
+            <span class="venue">{pub.venue}</span><br>
             {pub.authors.map(([name, isMe], i) => (
               <>
                 {i > 0 && ', '}
                 {isMe ? <strong>{name}</strong> : name}
               </>
-            ))}<br>
-            {pub.venue}. <a href={pub.href} target="_blank" rel="noopener">Paper</a>
+            ))}
           </p>
-          {pub.media.type === 'video'
+          {pub.media && (pub.media.type === 'video'
             ? <video class="media" src={pub.media.src} muted autoplay loop playsinline></video>
-            : <img class="media" src={pub.media.src} alt="" loading="lazy" />}
+            : <img class="media" src={pub.media.src} alt="" loading="lazy" />)}
         </li>
       ))}
     </ul>

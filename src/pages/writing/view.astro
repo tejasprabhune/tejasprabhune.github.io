@@ -1,0 +1,47 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev';
+---
+<Layout title="Writing: Tejas Prabhune">
+  <article class="stack">
+    <h1 id="post-title">Loading…</h1>
+    <p class="post-date" id="post-date" hidden></p>
+    <div class="post-content" id="post-body" data-api={API}></div>
+  </article>
+</Layout>
+
+<script>
+  const body = document.getElementById('post-body')!;
+  const title = document.getElementById('post-title')!;
+  const date = document.getElementById('post-date')!;
+  const API = body.dataset.api!;
+
+  const slug = new URLSearchParams(location.search).get('slug');
+
+  async function load() {
+    if (!slug) {
+      title.textContent = 'Not found.';
+      return;
+    }
+    try {
+      const response = await fetch(`${API}/api/writing/published/${encodeURIComponent(slug)}`);
+      if (!response.ok) throw new Error('not found');
+      const post = await response.json();
+      title.textContent = post.title;
+      document.title = `${post.title}: Tejas Prabhune`;
+      if (post.published_at) {
+        date.textContent = new Date(post.published_at).toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        });
+        date.hidden = false;
+      }
+      body.innerHTML = post.svg ?? '';
+    } catch {
+      title.textContent = 'Not found.';
+    }
+  }
+
+  void load();
+</script>

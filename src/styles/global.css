@@ -14,9 +14,27 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "Neue Montreal";
+  src: url("/fonts/NeueMontreal-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Neue Montreal";
+  src: url("/fonts/NeueMontreal-MediumItalic.otf") format("opentype");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
   --paper: #FFFFFF;
-  --ink: #4A4A4A;
+  --ink: #000000;
+  --muted: #6F6F6F;
+  --line: #E3E3E3;
   --sans: "Neue Montreal", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -27,7 +45,7 @@
 }
 
 html {
-  font-size: clamp(19px, 1.35vw, 26px);
+  font-size: 16px;
 }
 
 body {
@@ -35,43 +53,68 @@ body {
   color: var(--ink);
   font-family: var(--sans);
   font-size: 1rem;
-  line-height: 1.4;
+  line-height: 1.45;
   text-align: left;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   -webkit-font-smoothing: antialiased;
 }
 
 main,
-nav {
+footer {
+  width: 100%;
   max-width: 62rem;
-  padding: 0 1.25rem;
-}
-
-nav {
-  padding-top: 2rem;
-  display: flex;
-  gap: 1.5rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
 }
 
 main {
-  padding-top: 3.5rem;
-  padding-bottom: 6rem;
+  flex: 1;
+  padding-top: 3rem;
+  padding-bottom: 4rem;
+}
+
+main.wide {
+  max-width: none;
+}
+
+footer {
+  padding-top: 1rem;
+  padding-bottom: 1.5rem;
+}
+
+footer nav {
+  display: flex;
+  gap: 1.25rem;
+}
+
+footer a {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+footer a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 h1 {
-  font-size: 3.25rem;
+  font-size: 1.5rem;
   font-weight: 500;
-  line-height: 1.02;
-  letter-spacing: -0.025em;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 h2 {
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 500;
-  letter-spacing: -0.015em;
 }
 
 p {
-  max-width: 34rem;
+  max-width: 38rem;
 }
 
 a {
@@ -81,7 +124,13 @@ a {
 }
 
 a:hover {
-  color: #000;
+  color: var(--muted);
+}
+
+/* External and post links carry a small arrow. */
+a.ext::after {
+  content: " ↗";
+  font-size: 0.85em;
 }
 
 ul {
@@ -95,14 +144,18 @@ ul {
 }
 
 .stack > * + * {
-  margin-top: 1.75rem;
+  margin-top: 1.5rem;
 }
 
 .contact li + li {
-  margin-top: 0.35rem;
+  margin-top: 0.3rem;
 }
 
-/* Things I've Done */
+.muted {
+  color: var(--muted);
+}
+
+/* Prior work */
 .disclosure {
   appearance: none;
   background: none;
@@ -117,7 +170,7 @@ ul {
 }
 
 .disclosure:hover {
-  color: #000;
+  color: var(--muted);
 }
 
 .drawer {
@@ -143,6 +196,7 @@ ul {
 
 .things {
   padding-top: 1rem;
+  max-width: 38rem;
 }
 
 .things li + li {
@@ -155,66 +209,56 @@ ul {
 
 /* Research */
 .pubs li + li {
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 }
 
 .pubs .title {
   font-weight: 500;
 }
 
+.pubs .venue {
+  font-style: italic;
+}
+
+.pubs p {
+  max-width: 42rem;
+}
+
 .media {
   display: block;
   width: 100%;
-  max-width: 20rem;
+  max-width: 18rem;
   height: auto;
-  margin-top: 0.5rem;
-}
-
-/* Canon */
-.canon-category + .canon-category {
-  margin-top: 3.5rem;
-}
-
-.canon-category h2 {
-  margin-bottom: 1.5rem;
-}
-
-.canon-category h3 {
-  font-size: 1rem;
-  font-weight: 500;
-  margin: 2.25rem 0 1rem;
-}
-
-.canon-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
-  gap: 2.25rem 2.5rem;
-}
-
-.canon-card p {
-  max-width: none;
-}
-
-.canon-title {
-  font-weight: 500;
-}
-
-.canon-date {
-  font-size: 0.8rem;
-  margin-top: 0.15rem;
-}
-
-.canon-thoughts {
   margin-top: 0.6rem;
 }
 
-.canon-future {
-  list-style: decimal;
-  padding-left: 1.5em;
+/* Reading */
+.reading li + li {
+  margin-top: 1.75rem;
 }
 
-.canon-future li + li {
-  margin-top: 0.75rem;
+.reading-title {
+  font-weight: 500;
+}
+
+.reading-date {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+.reading-thoughts {
+  margin-top: 0.4rem;
+}
+
+.reading-future {
+  list-style: decimal;
+  padding-left: 1.4em;
+  max-width: 38rem;
+}
+
+.reading-future li + li {
+  margin-top: 0.6rem;
 }
 
 .canon-note {
@@ -223,15 +267,15 @@ ul {
 }
 
 .canon-status {
-  opacity: 0.6;
+  color: var(--muted);
 }
 
 .canon-editlink {
-  margin-top: 4rem;
+  margin-top: 3rem;
   font-size: 0.8rem;
 }
 
-/* Editor */
+/* Reading editor forms */
 .canon-form {
   display: flex;
   flex-direction: column;
@@ -345,19 +389,195 @@ ul {
   padding-bottom: 12rem;
 }
 
-/* Blog */
+/* Writing */
 .posts li + li {
   margin-top: 0.5rem;
 }
 
+.add {
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+  text-decoration: none;
+  border: 1px solid var(--ink);
+  padding: 0.35rem 0.65rem;
+}
+
+.add:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.post-date {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 .post-content {
-  max-width: 42rem;
+  max-width: 40rem;
 }
 
 .post-content svg {
   width: 100%;
   height: auto;
   display: block;
+}
+
+/* Typst editor */
+#editor-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+#editor-bar input,
+#editor-bar select {
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+  background: none;
+  border: 1px solid var(--line);
+  padding: 0.35rem 0.5rem;
+  border-radius: 0;
+}
+
+#post-title {
+  width: 16rem;
+}
+
+#editor-bar button {
+  font: inherit;
+  font-size: 0.8rem;
+  color: inherit;
+  background: none;
+  border: 1px solid var(--ink);
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+#editor-bar button:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+#editor-bar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#editor-status {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+#image-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-bottom: 0.6rem;
+}
+
+.image-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: 1px solid var(--line);
+  padding: 0.15rem 0.45rem;
+  color: var(--muted);
+}
+
+.image-chip button {
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.image-chip button:hover {
+  color: #B00020;
+}
+
+#panes {
+  display: flex;
+  height: calc(100vh - 10.5rem);
+  min-height: 24rem;
+  border: 1px solid var(--line);
+}
+
+#editor-pane {
+  width: 50%;
+  min-width: 0;
+  border-right: 1px solid var(--line);
+}
+
+#editor-pane .cm-editor {
+  height: 100%;
+  font-size: 0.8rem;
+}
+
+#editor-pane .cm-editor.cm-focused {
+  outline: none;
+}
+
+#preview-pane {
+  width: 50%;
+  min-width: 0;
+  overflow: auto;
+  background: #F4F4F4;
+  padding: 1.25rem;
+}
+
+#preview svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+#diagnostics {
+  font-size: 0.75rem;
+  color: #B00020;
+  white-space: pre-wrap;
+  margin-top: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (max-width: 800px) {
+  #post-title {
+    width: 100%;
+  }
+
+  #panes {
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  #editor-pane,
+  #preview-pane {
+    width: 100%;
+  }
+
+  #editor-pane {
+    height: 45vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  #preview-pane {
+    height: 45vh;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,36 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+  const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev';
+  try {
+    const response = await fetch(`${API}/api/writing`, { signal: AbortSignal.timeout(20000) });
+    if (!response.ok) return [];
+    const posts: { slug: string }[] = await response.json();
+    const full = await Promise.all(
+      posts.map(post =>
+        fetch(`${API}/api/writing/published/${post.slug}`)
+          .then(r => (r.ok ? r.json() : null))
+          .catch(() => null),
+      ),
+    );
+    return full
+      .filter(post => post && post.svg)
+      .map(post => ({ params: { slug: post.slug }, props: { post } }));
+  } catch {
+    return [];
+  }
+}
+
+const { post } = Astro.props;
+const date = post.published_at
+  ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  : '';
+---
+<Layout title={`${post.title}: Tejas Prabhune`}>
+  <article class="stack">
+    <h1>{post.title}</h1>
+    {date && <p class="post-date">{date}</p>}
+    <div class="post-content" set:html={post.svg}></div>
+  </article>
+</Layout>

@@ -4,16 +4,16 @@ import '../styles/global.css';
 interface Props {
   title: string;
   description?: string;
+  wide?: boolean;
 }
 
-const { title, description = 'Tejas Prabhune' } = Astro.props;
+const { title, description = 'Tejas Prabhune', wide = false } = Astro.props;
 
-const nav = [
+const links = [
   { href: '/', label: 'Index' },
   { href: '/research', label: 'Research' },
-  { href: '/canon', label: 'Canon' },
-  // Writing is hidden for now; the pages still build at /blog.
-  // { href: '/blog', label: 'Writing' },
+  { href: '/reading', label: 'Reading' },
+  { href: '/writing', label: 'Writing' },
 ];
 ---
 <!DOCTYPE html>
@@ -26,12 +26,14 @@ const nav = [
   <meta name="color-scheme" content="light">
 </head>
 <body>
-  <nav>
-    {nav.map(item => <a href={item.href}>{item.label}</a>)}
-  </nav>
-
-  <main>
+  <main class={wide ? 'wide' : undefined}>
     <slot />
   </main>
+
+  <footer>
+    <nav>
+      {links.map(link => <a href={link.href}>{link.label}</a>)}
+    </nav>
+  </footer>
 </body>
 </html>

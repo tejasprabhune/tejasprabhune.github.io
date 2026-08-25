@@ -1,0 +1,68 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev';
+
+type Meta = { slug: string; title: string; published_at: string | null };
+
+// Snapshotted at build for an instant paint; refreshed client-side so a
+// post published after the last deploy still shows up.
+let snapshot: Meta[] = [];
+try {
+  const response = await fetch(`${API}/api/writing`, { signal: AbortSignal.timeout(20000) });
+  if (response.ok) snapshot = await response.json();
+} catch {
+  // The client fetch below still fills the list in.
+}
+---
+<Layout title="Writing: Tejas Prabhune">
+  <div class="stack">
+    <h1>Writing</h1>
+
+    <ul class="posts" id="posts" data-api={API}>
+      {snapshot.map(post => (
+        <li><a class="ext" href={`/writing/${post.slug}/`}>{post.title}</a></li>
+      ))}
+    </ul>
+
+    <p><a class="add" href="/writing/editor/" aria-label="new post">+</a></p>
+  </div>
+</Layout>
+
+<script type="application/json" id="writing-snapshot" set:html={JSON.stringify(snapshot.map(p => p.slug)).replace(/</g, '\\u003c')}></script>
+
+<script>
+  type Meta = { slug: string; title: string; published_at: string | null };
+
+  const list = document.getElementById('posts')!;
+  const API = list.dataset.api!;
+
+  // Slugs that already have a static page from the last build. Anything
+  // newer is served through the client-side viewer until the next deploy.
+  let staticSlugs: string[] = [];
+  try {
+    staticSlugs = JSON.parse(document.getElementById('writing-snapshot')?.textContent ?? '[]');
+  } catch {
+    staticSlugs = [];
+  }
+
+  fetch(`${API}/api/writing`)
+    .then(response => (response.ok ? response.json() : Promise.reject()))
+    .then((posts: Meta[]) => {
+      const fresh = posts.map(p => p.slug);
+      if (JSON.stringify(fresh) === JSON.stringify(staticSlugs)) return;
+      list.innerHTML = '';
+      for (const post of posts) {
+        const item = document.createElement('li');
+        const anchor = document.createElement('a');
+        anchor.className = 'ext';
+        anchor.href = staticSlugs.includes(post.slug)
+          ? `/writing/${post.slug}/`
+          : `/writing/view/?slug=${encodeURIComponent(post.slug)}`;
+        anchor.textContent = post.title;
+        item.append(anchor);
+        list.append(item);
+      }
+    })
+    .catch(() => {});
+</script>

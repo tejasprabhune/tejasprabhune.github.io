@@ -1,0 +1,622 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev';
+---
+<Layout title="Editor: Tejas Prabhune" wide>
+  <div id="gate" class="stack" data-api={API}>
+    <h1>Editor</h1>
+    <form id="password-form">
+      <input type="password" id="password" placeholder="password" autocomplete="current-password">
+      <button type="submit">unlock</button>
+      <span id="password-error"></span>
+    </form>
+  </div>
+
+  <div id="studio" hidden>
+    <div id="editor-bar">
+      <a href="/writing/">writing</a>
+      <select id="post-select"></select>
+      <input type="text" id="post-title" placeholder="Title">
+      <span id="post-slug" class="muted"></span>
+      <button type="button" id="save">save draft</button>
+      <button type="button" id="publish">publish</button>
+      <button type="button" id="unpublish" hidden>unpublish</button>
+      <button type="button" id="delete-post">delete</button>
+      <button type="button" id="vim-toggle">vim: on</button>
+      <span id="editor-status"></span>
+    </div>
+    <div id="image-strip" hidden></div>
+    <div id="panes">
+      <div id="editor-pane"></div>
+      <div id="preview-pane">
+        <div id="preview"></div>
+        <pre id="diagnostics" hidden></pre>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const gate = document.getElementById('gate')!;
+  const API = gate.dataset.api!;
+  const PASSWORD_KEY = 'canon-password';
+
+  const studio = document.getElementById('studio')!;
+  const postSelect = document.getElementById('post-select') as HTMLSelectElement;
+  const titleInput = document.getElementById('post-title') as HTMLInputElement;
+  const slugLabel = document.getElementById('post-slug')!;
+  const saveButton = document.getElementById('save') as HTMLButtonElement;
+  const publishButton = document.getElementById('publish') as HTMLButtonElement;
+  const unpublishButton = document.getElementById('unpublish') as HTMLButtonElement;
+  const deleteButton = document.getElementById('delete-post') as HTMLButtonElement;
+  const statusLabel = document.getElementById('editor-status')!;
+  const preview = document.getElementById('preview')!;
+  const previewPane = document.getElementById('preview-pane')!;
+  const diagnostics = document.getElementById('diagnostics')!;
+
+  const TEMPLATE = `#set page(width: 16cm, height: auto, margin: (x: 0.2cm, top: 0.2cm, bottom: 0.8cm), fill: white)
+#set text(font: "Neue Montreal", size: 11pt, fill: black)
+#set par(leading: 0.75em)
+#show math.equation: set text(font: "New Computer Modern Sans Math")
+
+`;
+
+  type Meta = {
+    id: string;
+    slug: string;
+    title: string;
+    status: 'draft' | 'published';
+    updated_at: string;
+  };
+  type Post = Meta & { source: string; svg: string | null; published_at: string | null };
+
+  let password: string | null = sessionStorage.getItem(PASSWORD_KEY);
+  let posts: Meta[] = [];
+  let current: Post | null = null;
+  let savedDoc = '';
+  let savedTitle = '';
+  const dirtyImages = new Set<string>();
+  const imageBlobs = new Map<string, { bytes: Uint8Array; type: string; id?: string }>();
+  const imageStrip = document.getElementById('image-strip')!;
+
+  let view: any = null;
+  let typst: any = null;
+
+  function setStatus(text: string, isError = false) {
+    statusLabel.textContent = text;
+    statusLabel.style.color = isError ? '#B00020' : '';
+  }
+
+  async function api(path: string, options: RequestInit = {}) {
+    const headers = new Headers(options.headers);
+    if (password) headers.set('x-canon-password', password);
+    const response = await fetch(`${API}${path}`, { ...options, headers });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(body.error ?? 'request failed');
+    }
+    return response.status === 204 ? null : response.json();
+  }
+
+  const slugify = (title: string) =>
+    title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'untitled';
+
+  const autosaveKey = () => `writing-autosave-${current?.id ?? 'new'}`;
+
+  function docText(): string {
+    return view ? view.state.doc.toString() : '';
+  }
+
+  function setDoc(text: string) {
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+  }
+
+  function unsaved() {
+    return docText() !== savedDoc || titleInput.value !== savedTitle;
+  }
+
+  function updateButtons() {
+    const published = current?.status === 'published';
+    publishButton.textContent = published ? 'republish' : 'publish';
+    unpublishButton.hidden = !published;
+  }
+
+  // Live preview. Compiles are queued so a keystroke during a compile
+  // schedules exactly one follow-up run.
+  let compiling = false;
+  let compileAgain = false;
+  let compileTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function compileSoon() {
+    clearTimeout(compileTimer);
+    compileTimer = setTimeout(() => void compile(), 250);
+  }
+
+  // The main file lives at a fixed path so image("/images/...") paths
+  // resolve against the shadow filesystem the pasted images are mapped into.
+  async function compileSvg(): Promise<string> {
+    await typst.$typst.addSource('/main.typ', docText());
+    return typst.$typst.svg({ mainFilePath: '/main.typ' });
+  }
+
+  async function compile() {
+    if (compiling) {
+      compileAgain = true;
+      return;
+    }
+    compiling = true;
+    do {
+      compileAgain = false;
+      try {
+        const svg = await compileSvg();
+        const scroll = previewPane.scrollTop;
+        preview.innerHTML = svg;
+        previewPane.scrollTop = scroll;
+        diagnostics.hidden = true;
+      } catch (error) {
+        diagnostics.textContent = formatDiagnostics(error);
+        diagnostics.hidden = false;
+      }
+    } while (compileAgain);
+    compiling = false;
+  }
+
+  function formatDiagnostics(error: unknown): string {
+    if (Array.isArray(error)) {
+      return error
+        .map(d => (typeof d === 'string' ? d : d?.message ?? JSON.stringify(d)))
+        .join('\n');
+    }
+    if (error instanceof Error) return error.message;
+    return String(error);
+  }
+
+  function refreshSelect() {
+    postSelect.innerHTML = '';
+    const fresh = document.createElement('option');
+    fresh.value = '';
+    fresh.textContent = 'new post';
+    postSelect.append(fresh);
+
+    for (const status of ['draft', 'published'] as const) {
+      const group = document.createElement('optgroup');
+      group.label = status === 'draft' ? 'Drafts' : 'Published';
+      for (const post of posts.filter(p => p.status === status)) {
+        const option = document.createElement('option');
+        option.value = post.id;
+        option.textContent = post.title;
+        group.append(option);
+      }
+      if (group.children.length) postSelect.append(group);
+    }
+    postSelect.value = current?.id ?? '';
+  }
+
+  async function refreshPosts() {
+    posts = await api('/api/writing/all');
+    refreshSelect();
+  }
+
+  async function resetImages() {
+    imageBlobs.clear();
+    dirtyImages.clear();
+    await typst.$typst.resetShadow();
+    renderImageStrip();
+  }
+
+  function renderImageStrip() {
+    imageStrip.innerHTML = '';
+    imageStrip.hidden = imageBlobs.size === 0;
+    for (const [filename] of imageBlobs) {
+      const chip = document.createElement('span');
+      chip.className = 'image-chip';
+      chip.append(filename);
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.title = `delete ${filename}`;
+      remove.addEventListener('click', () => void deleteImage(filename));
+      chip.append(remove);
+      imageStrip.append(chip);
+    }
+  }
+
+  async function deleteImage(filename: string) {
+    if (!confirm(`Delete ${filename}? References to it in the text will stop compiling.`)) return;
+    const image = imageBlobs.get(filename);
+    try {
+      if (image?.id) {
+        await api(`/api/writing/images/${image.id}`, { method: 'DELETE' });
+      }
+      imageBlobs.delete(filename);
+      dirtyImages.delete(filename);
+      await typst.$typst.unmapShadow(`/images/${filename}`);
+      renderImageStrip();
+      compileSoon();
+    } catch (error) {
+      setStatus((error as Error).message, true);
+    }
+  }
+
+  async function openNew() {
+    current = null;
+    await resetImages();
+    titleInput.value = '';
+    slugLabel.textContent = '';
+    setDoc(TEMPLATE);
+    savedDoc = docText();
+    savedTitle = '';
+    updateButtons();
+    refreshSelect();
+    restoreAutosave();
+    void compile();
+  }
+
+  async function openPost(id: string) {
+    setStatus('loading…');
+    const post: Post = await api(`/api/writing/posts/${id}`);
+    current = post;
+    await resetImages();
+
+    const images: { id: string; filename: string; content_type: string }[] =
+      await api(`/api/writing/posts/${id}/images`);
+    for (const image of images) {
+      const response = await fetch(`${API}/api/writing/images/${image.id}`, {
+        headers: password ? { 'x-canon-password': password } : {},
+      });
+      if (!response.ok) continue;
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      imageBlobs.set(image.filename, { bytes, type: image.content_type, id: image.id });
+      await typst.$typst.mapShadow(`/images/${image.filename}`, bytes);
+    }
+    renderImageStrip();
+
+    titleInput.value = post.title;
+    slugLabel.textContent = `/${post.slug}`;
+    setDoc(post.source);
+    savedDoc = docText();
+    savedTitle = post.title;
+    updateButtons();
+    refreshSelect();
+    setStatus('');
+    restoreAutosave();
+    void compile();
+  }
+
+  function writeAutosave() {
+    try {
+      localStorage.setItem(
+        autosaveKey(),
+        JSON.stringify({ title: titleInput.value, source: docText(), at: Date.now() }),
+      );
+    } catch {
+      // Storage full or blocked; the server copy is the real save anyway.
+    }
+  }
+
+  function restoreAutosave() {
+    try {
+      const raw = localStorage.getItem(autosaveKey());
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      const serverAt = current ? new Date(current.updated_at).getTime() : 0;
+      if (saved.at > serverAt && saved.source !== docText()) {
+        if (confirm('Restore unsaved local changes for this post?')) {
+          titleInput.value = saved.title ?? titleInput.value;
+          setDoc(saved.source);
+        } else {
+          localStorage.removeItem(autosaveKey());
+        }
+      }
+    } catch {
+      // A malformed autosave is not worth surfacing.
+    }
+  }
+
+  async function save(): Promise<boolean> {
+    const title = titleInput.value.trim();
+    if (!title) {
+      setStatus('title required', true);
+      titleInput.focus();
+      return false;
+    }
+    setStatus('saving…');
+    try {
+      if (!current) {
+        current = await api('/api/writing/posts', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ title, slug: slugify(title), source: docText() }),
+        });
+      } else {
+        current = await api(`/api/writing/posts/${current.id}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ title, source: docText() }),
+        });
+      }
+
+      for (const filename of [...dirtyImages]) {
+        const image = imageBlobs.get(filename);
+        if (!image) continue;
+        const form = new FormData();
+        form.append('file', new Blob([image.bytes.buffer as ArrayBuffer], { type: image.type }), filename);
+        const meta = await api(`/api/writing/posts/${current!.id}/images`, { method: 'POST', body: form });
+        image.id = meta.id;
+        dirtyImages.delete(filename);
+      }
+
+      savedDoc = docText();
+      savedTitle = titleInput.value;
+      slugLabel.textContent = `/${current!.slug}`;
+      localStorage.removeItem(autosaveKey());
+      await refreshPosts();
+      setStatus(`saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+      return true;
+    } catch (error) {
+      setStatus((error as Error).message, true);
+      return false;
+    }
+  }
+
+  async function publish() {
+    if (!(await save())) return;
+    setStatus('publishing…');
+    try {
+      const svg = await compileSvg();
+      current = await api(`/api/writing/posts/${current!.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ svg, status: 'published' }),
+      });
+      updateButtons();
+      await refreshPosts();
+      setStatus('published');
+    } catch (error) {
+      setStatus(formatDiagnostics(error), true);
+    }
+  }
+
+  async function unpublish() {
+    if (!current || current.status !== 'published') return;
+    if (!confirm(`Unpublish "${current.title}"?`)) return;
+    setStatus('unpublishing…');
+    try {
+      current = await api(`/api/writing/posts/${current.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: 'draft' }),
+      });
+      updateButtons();
+      await refreshPosts();
+      setStatus('unpublished');
+    } catch (error) {
+      setStatus((error as Error).message, true);
+    }
+  }
+
+  async function deletePost() {
+    if (!current) {
+      await openNew();
+      return;
+    }
+    if (!confirm(`Delete "${current.title}"?`)) return;
+    try {
+      await api(`/api/writing/posts/${current.id}`, { method: 'DELETE' });
+      localStorage.removeItem(autosaveKey());
+      current = null;
+      await refreshPosts();
+      await openNew();
+      setStatus('deleted');
+    } catch (error) {
+      setStatus((error as Error).message, true);
+    }
+  }
+
+  function nextImageName(extension: string) {
+    let n = 1;
+    while (imageBlobs.has(`img-${n}.${extension}`)) n += 1;
+    return `img-${n}.${extension}`;
+  }
+
+  async function pasteImage(file: File) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const extension = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/gif' ? 'gif' : 'png';
+    const filename = nextImageName(extension);
+
+    imageBlobs.set(filename, { bytes, type: file.type || 'image/png' });
+    dirtyImages.add(filename);
+    await typst.$typst.mapShadow(`/images/${filename}`, bytes);
+    renderImageStrip();
+
+    const pos = view.state.selection.main.head;
+    const line = view.state.doc.lineAt(pos);
+    const needsBreak = pos > line.from ? '\n' : '';
+    const snippet = `${needsBreak}#figure(\n  image("/images/${filename}", width: 80%),\n  caption: [],\n)\n`;
+    view.dispatch({
+      changes: { from: pos, insert: snippet },
+      selection: { anchor: pos + snippet.length },
+    });
+    view.focus();
+    compileSoon();
+  }
+
+  async function boot() {
+    gate.hidden = true;
+    studio.hidden = false;
+    setStatus('loading editor…');
+
+    const [codemirror, vimMode, typstLang, cmLanguage, cmState, snippet, typstFs, compilerWasm, rendererWasm] =
+      await Promise.all([
+        import('codemirror'),
+        import('@replit/codemirror-vim'),
+        import('codemirror-lang-typst/lezer'),
+        import('@codemirror/language'),
+        import('@codemirror/state'),
+        import('@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs'),
+        import('@myriaddreamin/typst.ts/dist/esm/fs/index.mjs'),
+        import('@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url'),
+        import('@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm?url'),
+      ]);
+
+    typst = snippet;
+    const { $typst, TypstSnippet } = snippet;
+    $typst.setCompilerInitOptions({ getModule: () => compilerWasm.default });
+    $typst.setRendererInitOptions({ getModule: () => rendererWasm.default });
+    $typst.use(
+      TypstSnippet.withAccessModel(new typstFs.MemoryAccessModel()),
+      TypstSnippet.disableDefaultFontAssets(),
+      TypstSnippet.preloadFonts([
+        '/fonts/NeueMontreal-Regular.otf',
+        '/fonts/NeueMontreal-Medium.otf',
+        '/fonts/NeueMontreal-Italic.otf',
+        '/fonts/NeueMontreal-MediumItalic.otf',
+        '/fonts/NewCMSansMath-Regular.otf',
+        '/fonts/DejaVuSansMono.ttf',
+      ]),
+    );
+
+    const { basicSetup, EditorView } = codemirror;
+    const { vim, Vim } = vimMode;
+
+    Vim.defineEx('write', 'w', () => void save());
+
+    // Vim keybinds are off by default on touch devices and small screens,
+    // where there is no real keyboard to drive them.
+    const mobile =
+      window.matchMedia('(pointer: coarse)').matches ||
+      window.matchMedia('(max-width: 800px)').matches;
+    let vimOn = !mobile;
+    const vimCompartment = new cmState.Compartment();
+    const vimToggle = document.getElementById('vim-toggle') as HTMLButtonElement;
+
+    function applyVim() {
+      vimToggle.textContent = `vim: ${vimOn ? 'on' : 'off'}`;
+      view?.dispatch({ effects: vimCompartment.reconfigure(vimOn ? vim() : []) });
+    }
+
+    vimToggle.textContent = `vim: ${vimOn ? 'on' : 'off'}`;
+    vimToggle.addEventListener('click', () => {
+      vimOn = !vimOn;
+      applyVim();
+      view.focus();
+    });
+
+    view = new EditorView({
+      doc: TEMPLATE,
+      parent: document.getElementById('editor-pane')!,
+      extensions: [
+        vimCompartment.of(vimOn ? vim() : []),
+        basicSetup,
+        typstLang.typst_lezer(),
+        cmLanguage.syntaxHighlighting(typstLang.TypstHighlightSytle),
+        EditorView.lineWrapping,
+        EditorView.updateListener.of((update: any) => {
+          if (update.docChanged) {
+            compileSoon();
+            writeAutosave();
+          }
+        }),
+      ],
+    });
+
+    savedDoc = docText();
+    savedTitle = '';
+
+    document.getElementById('editor-pane')!.addEventListener(
+      'paste',
+      event => {
+        const files = event.clipboardData?.files;
+        const file = files && [...files].find(f => f.type.startsWith('image/'));
+        if (!file) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void pasteImage(file);
+      },
+      { capture: true },
+    );
+
+    titleInput.addEventListener('input', writeAutosave);
+    saveButton.addEventListener('click', () => void save());
+    publishButton.addEventListener('click', () => void publish());
+    unpublishButton.addEventListener('click', () => void unpublish());
+    deleteButton.addEventListener('click', () => void deletePost());
+
+    postSelect.addEventListener('change', async () => {
+      if (unsaved() && !confirm('Discard unsaved changes?')) {
+        postSelect.value = current?.id ?? '';
+        return;
+      }
+      if (postSelect.value) await openPost(postSelect.value);
+      else await openNew();
+    });
+
+    window.addEventListener('keydown', event => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+        event.preventDefault();
+        void save();
+      }
+    });
+
+    window.addEventListener('beforeunload', event => {
+      if (unsaved()) event.preventDefault();
+    });
+
+    try {
+      await refreshPosts();
+    } catch (error) {
+      setStatus((error as Error).message, true);
+    }
+    setStatus('');
+    restoreAutosave();
+    view.focus();
+    void compile();
+  }
+
+  // Password gate, sharing the reading page's session unlock.
+  const passwordForm = document.getElementById('password-form') as HTMLFormElement;
+  const passwordInput = document.getElementById('password') as HTMLInputElement;
+  const passwordError = document.getElementById('password-error')!;
+
+  async function verify(candidate: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${API}/api/canon/verify`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: candidate }),
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  passwordForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    passwordError.textContent = '';
+    if (await verify(passwordInput.value)) {
+      password = passwordInput.value;
+      sessionStorage.setItem(PASSWORD_KEY, password);
+      passwordInput.value = '';
+      void boot();
+    } else {
+      passwordError.textContent = 'wrong password';
+    }
+  });
+
+  if (password) {
+    verify(password).then(ok => {
+      if (ok) {
+        void boot();
+      } else {
+        sessionStorage.removeItem(PASSWORD_KEY);
+        password = null;
+        passwordInput.focus();
+      }
+    });
+  } else {
+    passwordInput.focus();
+  }
+</script>
