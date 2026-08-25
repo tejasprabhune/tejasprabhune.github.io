@@ -1,9 +1,9 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 ---
-<Layout title="Preview: Tejas Prabhune">
+<Layout title="Preview: Tejas Prabhune" post>
   <article class="stack">
-    <h1 id="post-title">Draft preview</h1>
+    <h1 id="post-heading">Draft preview</h1>
     <p class="post-date" id="post-meta">draft preview</p>
     <div class="post-content" id="post-body"></div>
   </article>
@@ -13,7 +13,7 @@ import Layout from '../../layouts/Layout.astro';
   import { initSidenotes } from '../../scripts/sidenotes';
 
   const body = document.getElementById('post-body')!;
-  const title = document.getElementById('post-title')!;
+  const title = document.getElementById('post-heading')!;
 
   try {
     const raw = localStorage.getItem('writing-preview');

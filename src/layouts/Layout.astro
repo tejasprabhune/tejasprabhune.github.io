@@ -5,9 +5,10 @@ interface Props {
   title: string;
   description?: string;
   wide?: boolean;
+  post?: boolean;
 }
 
-const { title, description = 'Tejas Prabhune', wide = false } = Astro.props;
+const { title, description = 'Tejas Prabhune', wide = false, post = false } = Astro.props;
 
 const links = [
   { href: '/', label: 'Index' },
@@ -26,7 +27,7 @@ const links = [
   <meta name="color-scheme" content="light">
 </head>
 <body>
-  <main class={wide ? 'wide' : undefined}>
+  <main class={wide ? 'wide' : post ? 'post' : undefined}>
     <slot />
   </main>
 

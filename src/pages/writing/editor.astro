@@ -61,7 +61,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   // preloaded below. The sans variant stays available for an explicit
   // #show math.equation: set text(font: "New Computer Modern Sans Math").
   const TEMPLATE = `#set page(width: 16cm, height: auto, margin: (x: 0.2cm, top: 0.2cm, bottom: 0.8cm), fill: white)
-#set text(font: "Neue Montreal", size: 11pt, fill: black)
+#set text(font: "Neue Montreal", size: 12pt, fill: black)
 #set par(leading: 0.75em)
 
 `;
@@ -97,7 +97,6 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     v(2em)
     line(length: 30%, stroke: 0.5pt + luma(60%))
     v(0.6em)
-    set text(size: 9pt)
     for (i, note) in notes.enumerate() {
       [#super(str(i + 1)) #note]
       parbreak()
@@ -106,9 +105,11 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 }
 `;
 
-  const NOTE_PREAMBLE = `#set page(width: 6cm, height: auto, margin: 0.1cm, fill: none)
-#set text(font: "Neue Montreal", size: 8.5pt, fill: black)
-#set par(leading: 0.65em)
+  // Notes compile at the body's text size on a page narrowed by the card's
+  // number gutter and padding, so they display at the same scale as the body.
+  const NOTE_PREAMBLE = `#set page(width: 14.5cm, height: auto, margin: 0.1cm, fill: none)
+#set text(font: "Neue Montreal", size: 12pt, fill: black)
+#set par(leading: 0.75em)
 
 `;
 

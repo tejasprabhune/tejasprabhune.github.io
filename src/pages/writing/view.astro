@@ -3,9 +3,9 @@ import Layout from '../../layouts/Layout.astro';
 
 const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev';
 ---
-<Layout title="Writing: Tejas Prabhune">
+<Layout title="Writing: Tejas Prabhune" post>
   <article class="stack">
-    <h1 id="post-title">Loading…</h1>
+    <h1 id="post-heading">Loading…</h1>
     <p class="post-date" id="post-date" hidden></p>
     <div class="post-content" id="post-body" data-api={API}></div>
   </article>
@@ -15,7 +15,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   import { initSidenotes } from '../../scripts/sidenotes';
 
   const body = document.getElementById('post-body')!;
-  const title = document.getElementById('post-title')!;
+  const title = document.getElementById('post-heading')!;
   const date = document.getElementById('post-date')!;
   const API = body.dataset.api!;
 
