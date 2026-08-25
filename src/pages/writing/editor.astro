@@ -156,6 +156,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
         preview.innerHTML = svg;
         previewPane.scrollTop = scroll;
         diagnostics.hidden = true;
+        trackCursorHook?.();
       } catch (error) {
         diagnostics.textContent = formatDiagnostics(error);
         diagnostics.hidden = false;
@@ -163,6 +164,9 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     } while (compileAgain);
     compiling = false;
   }
+
+  // Set once the editor has booted; scrolls the preview to the cursor.
+  let trackCursorHook: (() => void) | null = null;
 
   function formatDiagnostics(error: unknown): string {
     if (Array.isArray(error)) {
@@ -450,13 +454,15 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     studio.hidden = false;
     setStatus('loading editor…');
 
-    const [codemirror, vimMode, typstLang, cmLanguage, cmState, snippet, typstFs, compilerWasm, rendererWasm] =
+    const [codemirror, vimMode, typstLang, cmLanguage, cmState, cmView, cmCommands, snippet, typstFs, compilerWasm, rendererWasm] =
       await Promise.all([
         import('codemirror'),
         import('@replit/codemirror-vim'),
         import('codemirror-lang-typst/lezer'),
         import('@codemirror/language'),
         import('@codemirror/state'),
+        import('@codemirror/view'),
+        import('@codemirror/commands'),
         import('@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs'),
         import('@myriaddreamin/typst.ts/dist/esm/fs/index.mjs'),
         import('@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url'),
@@ -601,6 +607,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
         vimCompartment.of(vimOn ? vim() : []),
         typstPairs,
         basicSetup,
+        cmView.keymap.of([cmCommands.indentWithTab]),
         typstLang.typst_lezer(),
         cmLanguage.syntaxHighlighting(typstLang.TypstHighlightSytle),
         EditorView.lineWrapping,
@@ -615,6 +622,88 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 
     savedDoc = docText();
     savedTitle = '';
+
+    // Preview cursor tracking. A copy of the source gets an invisible
+    // metadata marker at the nearest safe markup position above the cursor;
+    // querying its rendered position tells us where to scroll the preview.
+    const TRACK_MARK = '#context [#metadata(here().position()) <cursor-track>]';
+
+    function trackInjectPos(state: any): number {
+      const doc = state.doc;
+      let lineNo = doc.lineAt(state.selection.main.head).number;
+      for (; lineNo >= 1; lineNo--) {
+        const line = doc.line(lineNo);
+        if (!line.text.trim() || /\\\s*$/.test(line.text)) continue;
+        if (contextAt(state, line.to) === 'markup') return line.to;
+      }
+      return -1;
+    }
+
+    function scrollPreviewToPt(yPt: number) {
+      const svgEl = preview.querySelector('svg');
+      if (!svgEl) return;
+      const vb = (svgEl as any).viewBox?.baseVal;
+      if (!vb || !vb.height) return;
+      const svgRect = svgEl.getBoundingClientRect();
+      const paneRect = previewPane.getBoundingClientRect();
+      const yPx =
+        svgRect.top - paneRect.top + previewPane.scrollTop + (yPt / vb.height) * svgRect.height;
+      const lo = previewPane.scrollTop + previewPane.clientHeight * 0.15;
+      const hi = previewPane.scrollTop + previewPane.clientHeight * 0.85;
+      if (yPx >= lo && yPx <= hi) return;
+      previewPane.scrollTo({
+        top: Math.max(0, yPx - previewPane.clientHeight * 0.4),
+        behavior: 'smooth',
+      });
+    }
+
+    let tracking = false;
+    let trackAgain = false;
+    async function trackCursor() {
+      if (tracking) {
+        trackAgain = true;
+        return;
+      }
+      tracking = true;
+      do {
+        trackAgain = false;
+        await trackCursorOnce();
+      } while (trackAgain);
+      tracking = false;
+    }
+
+    async function trackCursorOnce() {
+      try {
+        const state = view.state;
+        const injectPos = trackInjectPos(state);
+        if (injectPos < 0) {
+          scrollPreviewToPt(0);
+          return;
+        }
+        const source = state.doc.toString();
+        const tracked = source.slice(0, injectPos) + TRACK_MARK + source.slice(injectPos);
+        await typst.$typst.addSource('/track.typ', tracked);
+        // The snippet's own query() forgets to compile the world first, so
+        // drive the world directly.
+        const compiler = await typst.$typst.getCompiler();
+        const found: any[] = await compiler.runWithWorld(
+          { mainFilePath: '/track.typ' },
+          async (world: any) => {
+            await world.compile({});
+            return world.query({ selector: '<cursor-track>', field: 'value' });
+          },
+        );
+        const position = found?.[0];
+        if (!position || position.page !== 1) return;
+        const yPt = parseFloat(String(position.y));
+        if (Number.isFinite(yPt)) scrollPreviewToPt(yPt);
+      } catch {
+        // The marker can land in an unparseable spot mid-edit; tracking
+        // simply skips that keystroke.
+      }
+    }
+
+    trackCursorHook = () => void trackCursor();
 
     document.getElementById('editor-pane')!.addEventListener(
       'paste',
