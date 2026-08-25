@@ -75,10 +75,18 @@ main {
   padding-bottom: 4rem;
 }
 
+/* The editor page is the one place the outer page must not scroll: the
+   viewport is capped and each pane scrolls on its own. */
+body:has(main.wide) {
+  height: 100vh;
+  overflow: hidden;
+}
+
 main.wide {
   max-width: none;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   padding-top: 1.5rem;
   padding-bottom: 1rem;
 }
@@ -697,6 +705,11 @@ ul {
 }
 
 @media (max-width: 800px) {
+  body:has(main.wide) {
+    height: auto;
+    overflow: visible;
+  }
+
   main.wide {
     display: block;
   }

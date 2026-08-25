@@ -63,9 +63,14 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   const TEMPLATE = `#set page(width: 16cm, height: auto, margin: (x: 0.2cm, top: 0.2cm, bottom: 0.8cm), fill: white)
 #set text(font: "Neue Montreal", size: 11pt, fill: black)
 #set par(leading: 0.75em)
-#import "/side.typ": side, side-appendix
 
 `;
+
+  // Every compile gets the sidenote bindings without the author having to
+  // import them. Sources that carry their own /side.typ import are left alone.
+  const SIDE_PRELUDE = '#import "/side.typ": side, side-appendix\n';
+  const withSidePrelude = (source: string) =>
+    source.includes('/side.typ') ? source : SIDE_PRELUDE + source;
 
   // Sidenotes: #side[...] renders a superscript number and records the
   // marker's position for the published page's margin rail. The appendix
@@ -178,7 +183,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   // The main file lives at a fixed path so image("/images/...") paths
   // resolve against the shadow filesystem the pasted images are mapped into.
   async function compileSvg(extra = ''): Promise<string> {
-    await typst.$typst.addSource('/main.typ', docText() + extra);
+    await typst.$typst.addSource('/main.typ', withSidePrelude(docText()) + extra);
     return typst.$typst.svg({ mainFilePath: '/main.typ' });
   }
 
@@ -191,7 +196,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     do {
       compileAgain = false;
       try {
-        const withAppendix = docText().includes('side-appendix');
+        const withAppendix = /#side\s*\[/.test(docText());
         const svg = await compileSvg(withAppendix ? '\n#side-appendix\n' : '');
         const scroll = previewPane.scrollTop;
         preview.innerHTML = svg;
@@ -791,7 +796,9 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
           return;
         }
         const source = state.doc.toString();
-        const tracked = source.slice(0, injectPos) + TRACK_MARK + source.slice(injectPos);
+        const prelude = source.includes('/side.typ') ? '' : SIDE_PRELUDE;
+        const tracked =
+          prelude + source.slice(0, injectPos) + TRACK_MARK + source.slice(injectPos);
         await typst.$typst.addSource('/track.typ', tracked);
         // The snippet's own query() forgets to compile the world first, so
         // drive the world directly.
