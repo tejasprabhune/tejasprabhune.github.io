@@ -507,11 +507,99 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
       view.focus();
     });
 
+    // Auto-close typst's symmetric delimiters: $math$, *strong* and _emph_.
+    // The syntax tree decides where each one makes sense, so _ stays a plain
+    // subscript in math and * stays multiplication in code.
+    const MARKUP_NODES = new Set([
+      'Markup', 'Text', 'Strong', 'Emph', 'Heading', 'ListItem', 'EnumItem',
+      'TermItem', 'ContentBlock', 'Link', 'SmartQuote', 'Parbreak',
+    ]);
+    const MATH_NODES = new Set([
+      'Equation', 'Math', 'MathText', 'MathIdent', 'MathCall', 'MathArgs',
+      'MathDelimited', 'MathAttach', 'MathFrac', 'MathRoot', 'MathPrimes',
+      'MathShorthand', 'MathFieldAccess', 'MathAlignPoint',
+    ]);
+    const VERBATIM_NODES = new Set(['Raw', 'Str', 'LineComment', 'BlockComment']);
+    const CODE_NODES = new Set([
+      'Code', 'CodeBlock', 'Args', 'Parenthesized', 'Array', 'Dict', 'FuncCall',
+      'LetBinding', 'SetRule', 'ShowRule', 'Binary', 'Unary', 'Closure', 'Params',
+      'Conditional', 'WhileLoop', 'ForLoop', 'Contextual', 'ModuleImport',
+      'ModuleInclude', 'ImportItems', 'Named', 'Keyed', 'Spread',
+    ]);
+
+    function contextAt(state: any, pos: number): 'markup' | 'math' | 'code' | 'verbatim' {
+      let node = cmLanguage.syntaxTree(state).resolveInner(pos, -1);
+      for (; node; node = node.parent) {
+        if (MARKUP_NODES.has(node.name)) return 'markup';
+        if (MATH_NODES.has(node.name)) return 'math';
+        if (VERBATIM_NODES.has(node.name)) return 'verbatim';
+        if (CODE_NODES.has(node.name)) return 'code';
+      }
+      return 'markup';
+    }
+
+    const typstPairs = EditorView.inputHandler.of((editorView: any, _from: number, _to: number, text: string) => {
+      if (text !== '$' && text !== '*' && text !== '_') return false;
+      const state = editorView.state;
+
+      if (state.selection.ranges.some((r: any) => !r.empty)) {
+        editorView.dispatch(
+          state.changeByRange((range: any) => ({
+            changes: [{ from: range.from, insert: text }, { from: range.to, insert: text }],
+            range: cmState.EditorSelection.range(range.anchor + 1, range.head + 1),
+          })),
+          { userEvent: 'input.type', scrollIntoView: true },
+        );
+        return true;
+      }
+
+      const pos = state.selection.main.head;
+      const prev = pos > 0 ? state.doc.sliceString(pos - 1, pos) : '';
+      const next = state.doc.sliceString(pos, pos + 1);
+      if (prev === '\\') return false;
+
+      // Typing the delimiter right before an identical one closes it.
+      if (next === text) {
+        editorView.dispatch({ selection: { anchor: pos + 1 }, scrollIntoView: true, userEvent: 'select' });
+        return true;
+      }
+
+      const context = contextAt(state, pos);
+      const closeOk = next === '' || /[\s)\]}.,;:!?"']/.test(next);
+      let pair = false;
+      if (text === '$') {
+        pair = (context === 'markup' || context === 'code') && closeOk;
+      } else {
+        const openOk = prev === '' || /[\s([{~"'\-–—]/.test(prev);
+        // On a #expression line the parse may not yet cover what is being
+        // typed, so a delimiter after a number or operator (say #let x = 2 *)
+        // reads as code continuing, not as the start of emphasis.
+        const line = state.doc.lineAt(pos);
+        const before = state.doc.sliceString(line.from, pos);
+        const anchorChar = before.trimEnd().slice(-1);
+        const codeish =
+          /^\s*#/.test(line.text) &&
+          before !== before.trimEnd() &&
+          /[0-9=+*/<>,)]/.test(anchorChar);
+        pair = context === 'markup' && openOk && closeOk && !codeish;
+      }
+      if (!pair) return false;
+
+      editorView.dispatch({
+        changes: { from: pos, insert: text + text },
+        selection: { anchor: pos + 1 },
+        scrollIntoView: true,
+        userEvent: 'input.type',
+      });
+      return true;
+    });
+
     view = new EditorView({
       doc: TEMPLATE,
       parent: document.getElementById('editor-pane')!,
       extensions: [
         vimCompartment.of(vimOn ? vim() : []),
+        typstPairs,
         basicSetup,
         typstLang.typst_lezer(),
         cmLanguage.syntaxHighlighting(typstLang.TypstHighlightSytle),
