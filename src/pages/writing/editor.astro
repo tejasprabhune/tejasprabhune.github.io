@@ -20,6 +20,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
       <input type="text" id="post-title" placeholder="Title">
       <span id="post-slug" class="muted"></span>
       <button type="button" id="save">save draft</button>
+      <button type="button" id="preview-post">preview</button>
       <button type="button" id="publish">publish</button>
       <button type="button" id="unpublish" hidden>unpublish</button>
       <button type="button" id="delete-post">delete</button>
@@ -47,6 +48,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   const titleInput = document.getElementById('post-title') as HTMLInputElement;
   const slugLabel = document.getElementById('post-slug')!;
   const saveButton = document.getElementById('save') as HTMLButtonElement;
+  const previewButton = document.getElementById('preview-post') as HTMLButtonElement;
   const publishButton = document.getElementById('publish') as HTMLButtonElement;
   const unpublishButton = document.getElementById('unpublish') as HTMLButtonElement;
   const deleteButton = document.getElementById('delete-post') as HTMLButtonElement;
@@ -61,6 +63,44 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   const TEMPLATE = `#set page(width: 16cm, height: auto, margin: (x: 0.2cm, top: 0.2cm, bottom: 0.8cm), fill: white)
 #set text(font: "Neue Montreal", size: 11pt, fill: black)
 #set par(leading: 0.75em)
+#import "/side.typ": side, side-appendix
+
+`;
+
+  // Sidenotes: #side[...] renders a superscript number and records the
+  // marker's position for the published page's margin rail. The appendix
+  // lists every note and is appended to live preview compiles only.
+  const SIDE_LIB = `#let side-notes = state("side-notes", ())
+#let side-count = counter("side-note")
+
+#let side(body) = {
+  side-count.step()
+  side-notes.update(s => s + (body,))
+  context {
+    let n = side-count.get().first()
+    super(str(n))
+    [#metadata((n: n, pos: here().position())) <side-note>]
+  }
+}
+
+#let side-appendix = context {
+  let notes = side-notes.final()
+  if notes.len() > 0 {
+    v(2em)
+    line(length: 30%, stroke: 0.5pt + luma(60%))
+    v(0.6em)
+    set text(size: 9pt)
+    for (i, note) in notes.enumerate() {
+      [#super(str(i + 1)) #note]
+      parbreak()
+    }
+  }
+}
+`;
+
+  const NOTE_PREAMBLE = `#set page(width: 5.4cm, height: auto, margin: 0.1cm, fill: white)
+#set text(font: "Neue Montreal", size: 8.5pt, fill: black)
+#set par(leading: 0.65em)
 
 `;
 
@@ -137,8 +177,8 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 
   // The main file lives at a fixed path so image("/images/...") paths
   // resolve against the shadow filesystem the pasted images are mapped into.
-  async function compileSvg(): Promise<string> {
-    await typst.$typst.addSource('/main.typ', docText());
+  async function compileSvg(extra = ''): Promise<string> {
+    await typst.$typst.addSource('/main.typ', docText() + extra);
     return typst.$typst.svg({ mainFilePath: '/main.typ' });
   }
 
@@ -151,7 +191,8 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     do {
       compileAgain = false;
       try {
-        const svg = await compileSvg();
+        const withAppendix = docText().includes('side-appendix');
+        const svg = await compileSvg(withAppendix ? '\n#side-appendix\n' : '');
         const scroll = previewPane.scrollTop;
         preview.innerHTML = svg;
         previewPane.scrollTop = scroll;
@@ -208,6 +249,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     imageBlobs.clear();
     dirtyImages.clear();
     await typst.$typst.resetShadow();
+    await typst.$typst.addSource('/side.typ', SIDE_LIB);
     renderImageStrip();
   }
 
@@ -367,19 +409,86 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     }
   }
 
+  function extractSideBodies(source: string): string[] {
+    const bodies: string[] = [];
+    const re = /#side\s*\[/g;
+    let match;
+    while ((match = re.exec(source))) {
+      const start = re.lastIndex;
+      let depth = 1;
+      let i = start;
+      while (i < source.length && depth > 0) {
+        if (source[i] === '[') depth += 1;
+        else if (source[i] === ']') depth -= 1;
+        i += 1;
+      }
+      if (depth === 0) bodies.push(source.slice(start, i - 1));
+      re.lastIndex = i;
+    }
+    return bodies;
+  }
+
+  // Each sidenote becomes its own narrow SVG, paired with the position of
+  // its superscript marker in the main document.
+  async function buildSidenotes(source: string) {
+    if (!/#side\s*\[/.test(source)) return [];
+    const compiler = await typst.$typst.getCompiler();
+    const marks: any[] = await compiler.runWithWorld(
+      { mainFilePath: '/main.typ' },
+      async (world: any) => {
+        await world.compile({});
+        return world.query({ selector: '<side-note>', field: 'value' });
+      },
+    );
+    const bodies = extractSideBodies(source);
+    const notes = [];
+    for (const mark of marks) {
+      const body = bodies[mark.n - 1];
+      if (body == null) continue;
+      await typst.$typst.addSource('/note.typ', NOTE_PREAMBLE + body.trim() + '\n');
+      const noteSvg = await typst.$typst.svg({ mainFilePath: '/note.typ' });
+      notes.push({
+        n: mark.n,
+        x: parseFloat(String(mark.pos.x)),
+        y: parseFloat(String(mark.pos.y)),
+        svg: noteSvg,
+      });
+    }
+    return notes;
+  }
+
   async function publish() {
     if (!(await save())) return;
     setStatus('publishing…');
     try {
       const svg = await compileSvg();
+      const notes = await buildSidenotes(docText());
       current = await api(`/api/writing/posts/${current!.id}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ svg, status: 'published' }),
+        body: JSON.stringify({ svg, status: 'published', notes }),
       });
       updateButtons();
       await refreshPosts();
       setStatus('published');
+    } catch (error) {
+      setStatus(formatDiagnostics(error), true);
+    }
+  }
+
+  // Renders the draft the way the published page will show it and opens
+  // it in a preview tab that reads the payload from localStorage.
+  async function openPreview() {
+    setStatus('rendering preview…');
+    try {
+      const svg = await compileSvg();
+      const notes = await buildSidenotes(docText());
+      localStorage.setItem(
+        'writing-preview',
+        JSON.stringify({ title: titleInput.value.trim() || 'Untitled', svg, notes, at: Date.now() }),
+      );
+      window.open('/writing/preview/', 'writing-preview');
+      setStatus('');
     } catch (error) {
       setStatus(formatDiagnostics(error), true);
     }
@@ -486,6 +595,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
         '/fonts/DejaVuSansMono.ttf',
       ]),
     );
+    await $typst.addSource('/side.typ', SIDE_LIB);
 
     const { basicSetup, EditorView } = codemirror;
     const { vim, Vim } = vimMode;
@@ -720,6 +830,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 
     titleInput.addEventListener('input', writeAutosave);
     saveButton.addEventListener('click', () => void save());
+    previewButton.addEventListener('click', () => void openPreview());
     publishButton.addEventListener('click', () => void publish());
     unpublishButton.addEventListener('click', () => void unpublish());
     deleteButton.addEventListener('click', () => void deletePost());

@@ -12,6 +12,8 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 </Layout>
 
 <script>
+  import { initSidenotes } from '../../scripts/sidenotes';
+
   const body = document.getElementById('post-body')!;
   const title = document.getElementById('post-title')!;
   const date = document.getElementById('post-date')!;
@@ -38,6 +40,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
         date.hidden = false;
       }
       body.innerHTML = post.svg ?? '';
+      initSidenotes(body, post.notes ?? [], date.hidden ? null : date);
     } catch {
       title.textContent = 'Not found.';
     }

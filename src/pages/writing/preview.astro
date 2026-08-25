@@ -1,0 +1,30 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+<Layout title="Preview: Tejas Prabhune">
+  <article class="stack">
+    <h1 id="post-title">Draft preview</h1>
+    <p class="post-date" id="post-meta">draft preview</p>
+    <div class="post-content" id="post-body"></div>
+  </article>
+</Layout>
+
+<script>
+  import { initSidenotes } from '../../scripts/sidenotes';
+
+  const body = document.getElementById('post-body')!;
+  const title = document.getElementById('post-title')!;
+
+  try {
+    const raw = localStorage.getItem('writing-preview');
+    if (!raw) throw new Error('no draft');
+    const draft = JSON.parse(raw);
+    title.textContent = draft.title;
+    document.title = `${draft.title}: preview`;
+    body.innerHTML = draft.svg ?? '';
+    initSidenotes(body, draft.notes ?? [], document.getElementById('post-meta'));
+  } catch {
+    title.textContent = 'No draft preview';
+    body.innerHTML = '<p>Open a preview from the editor.</p>';
+  }
+</script>

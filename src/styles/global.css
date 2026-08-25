@@ -77,6 +77,17 @@ main {
 
 main.wide {
   max-width: none;
+  display: flex;
+  flex-direction: column;
+  padding-top: 1.5rem;
+  padding-bottom: 1rem;
+}
+
+#studio {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 footer {
@@ -415,12 +426,144 @@ ul {
 
 .post-content {
   max-width: 40rem;
+  position: relative;
 }
 
 .post-content svg {
   width: 100%;
   height: auto;
   display: block;
+}
+
+/* Sidenotes */
+.post-body {
+  position: relative;
+}
+
+.side-hot {
+  position: absolute;
+  width: 1.4em;
+  height: 1.4em;
+  transform: translate(-70%, -60%);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.side-hot:hover,
+.side-hot.active {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.side-rail {
+  position: absolute;
+  top: 0;
+  left: calc(40rem + 2rem);
+  width: 18rem;
+}
+
+.side-card {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 0.4rem 0.5rem;
+  transition: top 0.25s ease;
+  cursor: pointer;
+}
+
+.side-card.focused {
+  border-color: var(--ink);
+}
+
+.side-card.collapsed {
+  width: auto;
+  padding: 0;
+  border: 0;
+}
+
+.side-card.collapsed .side-note-body {
+  display: none;
+}
+
+.side-chip {
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 0.15rem 0.4rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.side-chip:hover,
+.side-card.focused .side-chip {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.side-card:not(.collapsed) .side-chip {
+  border: 0;
+  padding: 0 0 0.25rem;
+}
+
+.side-note-body svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.side-toggle {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.side-toggle:hover {
+  color: var(--ink);
+}
+
+.side-list {
+  margin-top: 3rem;
+  display: none;
+}
+
+.side-list h2 {
+  margin-bottom: 1rem;
+}
+
+.side-list ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+  max-width: 26rem;
+}
+
+.side-list li + li {
+  margin-top: 0.8rem;
+}
+
+@media (max-width: 1049px) {
+  .side-rail {
+    display: none;
+  }
+
+  .side-list {
+    display: block;
+  }
+
+  .side-toggle {
+    display: none;
+  }
 }
 
 /* Typst editor */
@@ -509,8 +652,8 @@ ul {
 
 #panes {
   display: flex;
-  height: calc(100vh - 10.5rem);
-  min-height: 24rem;
+  flex: 1;
+  min-height: 0;
   border: 1px solid var(--line);
 }
 
@@ -554,12 +697,21 @@ ul {
 }
 
 @media (max-width: 800px) {
+  main.wide {
+    display: block;
+  }
+
+  #studio {
+    display: block;
+  }
+
   #post-title {
     width: 100%;
   }
 
   #panes {
     flex-direction: column;
+    flex: none;
     height: auto;
     min-height: 0;
   }

@@ -30,7 +30,22 @@ const date = post.published_at
 <Layout title={`${post.title}: Tejas Prabhune`}>
   <article class="stack">
     <h1>{post.title}</h1>
-    {date && <p class="post-date">{date}</p>}
+    <p class="post-date">{date}</p>
     <div class="post-content" set:html={post.svg}></div>
   </article>
 </Layout>
+
+<script type="application/json" id="notes-data" set:html={JSON.stringify(post.notes ?? []).replace(/</g, '\\u003c')}></script>
+
+<script>
+  import { initSidenotes } from '../../scripts/sidenotes';
+
+  const content = document.querySelector<HTMLElement>('.post-content');
+  let notes = [];
+  try {
+    notes = JSON.parse(document.getElementById('notes-data')?.textContent ?? '[]') ?? [];
+  } catch {
+    notes = [];
+  }
+  if (content) initSidenotes(content, notes, document.querySelector('.post-date'));
+</script>
