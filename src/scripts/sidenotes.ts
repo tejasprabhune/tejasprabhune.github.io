@@ -1,13 +1,14 @@
 // Margin sidenotes for published posts. Notes are anchored to the rendered
 // position of their #side marker: the focused note aligns exactly with its
 // anchor and the rest flow around it without overlapping, the way document
-// comment rails behave.
+// comment rails behave. The marker superscripts compile to svg links
+// (side:N), which double as the click targets.
 
 export type SideNote = { n: number; x: number; y: number; svg: string };
 
 const GAP = 10;
 
-export function initSidenotes(content: HTMLElement, notes: SideNote[], meta: HTMLElement | null) {
+export function initSidenotes(content: HTMLElement, notes: SideNote[]) {
   if (!notes.length) return;
   notes = [...notes].sort((a, b) => a.y - b.y);
 
@@ -21,10 +22,52 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[], meta: HTM
   rail.className = 'side-rail';
   wrap.append(rail);
 
-  const hotspots = new Map<number, HTMLButtonElement>();
-  const cards = new Map<number, HTMLElement>();
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'side-toggle';
+  rail.append(toggle);
 
+  // Marker links inside the compiled svg are the primary click targets.
+  // Documents compiled before markers became links fall back to invisible
+  // positioned hotspots.
+  const markers = new Map<number, Element>();
+  for (const anchor of content.querySelectorAll('svg a')) {
+    const href = anchor.getAttribute('xlink:href') ?? anchor.getAttribute('href') ?? '';
+    const match = /^side:(\d+)$/.exec(href);
+    if (!match) continue;
+    const n = Number(match[1]);
+    anchor.classList.add('side-link');
+    anchor.removeAttribute('target');
+    anchor.addEventListener('click', event => {
+      event.preventDefault();
+      select(n);
+    });
+    markers.set(n, anchor);
+  }
+
+  // The anchors are empty click rects; the number's glyphs are separate
+  // elements that happen to sit inside the rect, found by hit-testing so
+  // the selected marker can be faked bold with a stroke.
+  const markerGlyphs = new Map<number, Element[]>();
+  if (markers.size) {
+    const uses = [...content.querySelectorAll('svg use')];
+    for (const [n, anchor] of markers) {
+      const box = anchor.getBoundingClientRect();
+      markerGlyphs.set(
+        n,
+        uses.filter(use => {
+          const rect = use.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          return cx >= box.left - 1 && cx <= box.right + 1 && cy >= box.top - 1 && cy <= box.bottom + 1;
+        }),
+      );
+    }
+  }
+
+  const hotspots = new Map<number, HTMLButtonElement>();
   for (const note of notes) {
+    if (markers.has(note.n)) continue;
     const hot = document.createElement('button');
     hot.type = 'button';
     hot.className = 'side-hot';
@@ -32,17 +75,19 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[], meta: HTM
     hot.addEventListener('click', () => select(note.n));
     content.append(hot);
     hotspots.set(note.n, hot);
+  }
 
+  const cards = new Map<number, HTMLElement>();
+  for (const note of notes) {
     const card = document.createElement('article');
     card.className = 'side-card collapsed';
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'side-chip';
-    chip.textContent = String(note.n);
+    const num = document.createElement('span');
+    num.className = 'side-num';
+    num.textContent = String(note.n);
     const body = document.createElement('div');
     body.className = 'side-note-body';
     body.innerHTML = note.svg;
-    card.append(chip, body);
+    card.append(num, body);
     card.addEventListener('click', event => {
       event.stopPropagation();
       select(note.n);
@@ -68,17 +113,6 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[], meta: HTM
   }
   list.append(heading, items);
   wrap.after(list);
-
-  if (!meta) {
-    meta = document.createElement('p');
-    meta.className = 'post-date';
-    wrap.before(meta);
-  }
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.className = 'side-toggle';
-  if (meta.textContent?.trim()) meta.append(' · ');
-  meta.append(toggle);
 
   let showAll = false;
   let focused: number | null = null;
@@ -108,20 +142,26 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[], meta: HTM
     const scale = svgRect.height / vb.height;
     for (const note of notes) {
       out.set(note.n, svgRect.top - wrapRect.top + note.y * scale);
-      const hot = hotspots.get(note.n)!;
-      hot.style.left = `${svgRect.left - contentRect.left + note.x * (svgRect.width / vb.width)}px`;
-      hot.style.top = `${svgRect.top - contentRect.top + note.y * scale}px`;
+      const hot = hotspots.get(note.n);
+      if (hot) {
+        hot.style.left = `${svgRect.left - contentRect.left + note.x * (svgRect.width / vb.width)}px`;
+        hot.style.top = `${svgRect.top - contentRect.top + note.y * scale}px`;
+      }
     }
     return out;
   }
 
   function update() {
     for (const note of notes) {
+      const focusedNote = focused === note.n;
       const card = cards.get(note.n)!;
-      const expanded = showAll || focused === note.n;
-      card.classList.toggle('collapsed', !expanded);
-      card.classList.toggle('focused', focused === note.n);
-      hotspots.get(note.n)!.classList.toggle('active', focused === note.n);
+      card.classList.toggle('collapsed', !(showAll || focusedNote));
+      card.classList.toggle('focused', focusedNote);
+      markers.get(note.n)?.classList.toggle('side-active', focusedNote);
+      for (const glyph of markerGlyphs.get(note.n) ?? []) {
+        glyph.classList.toggle('side-bold', focusedNote);
+      }
+      hotspots.get(note.n)?.classList.toggle('active', focusedNote);
     }
     toggle.textContent = showAll ? 'hide sidenotes' : `sidenotes (${notes.length})`;
     layout();
@@ -130,6 +170,7 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[], meta: HTM
   function layout() {
     const anchor = anchors();
     if (!anchor.size) return;
+    const minTop = toggle.offsetHeight + GAP;
     const heights = notes.map(note => cards.get(note.n)!.offsetHeight);
     const tops: number[] = new Array(notes.length);
     const focusIndex = focused == null ? -1 : notes.findIndex(note => note.n === focused);
@@ -144,13 +185,13 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[], meta: HTM
       }
     } else {
       for (let i = 0; i < notes.length; i++) {
-        tops[i] = Math.max(anchor.get(notes[i].n)!, i ? tops[i - 1] + heights[i - 1] + GAP : 0);
+        tops[i] = Math.max(anchor.get(notes[i].n)!, i ? tops[i - 1] + heights[i - 1] + GAP : minTop);
       }
     }
 
-    // Nothing may stick out above the rail; push the chain back down.
+    // Nothing may cover the toggle or a previous card; push the chain down.
     for (let i = 0; i < notes.length; i++) {
-      tops[i] = Math.max(tops[i], i ? tops[i - 1] + heights[i - 1] + GAP : 0);
+      tops[i] = Math.max(tops[i], i ? tops[i - 1] + heights[i - 1] + GAP : minTop);
     }
 
     let bottom = 0;

@@ -66,9 +66,12 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 
 `;
 
-  // Every compile gets the sidenote bindings without the author having to
-  // import them. Sources that carry their own /side.typ import are left alone.
-  const SIDE_PRELUDE = '#import "/side.typ": side, side-appendix\n';
+  // Every compile gets the sidenote bindings and house style without the
+  // author having to import them. Sources that carry their own /side.typ
+  // import are left alone.
+  const SIDE_PRELUDE =
+    '#import "/side.typ": side, side-appendix\n' +
+    '#show heading: set block(above: 1.6em, below: 0.9em)\n';
   const withSidePrelude = (source: string) =>
     source.includes('/side.typ') ? source : SIDE_PRELUDE + source;
 
@@ -83,7 +86,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   side-notes.update(s => s + (body,))
   context {
     let n = side-count.get().first()
-    super(str(n))
+    link("side:" + str(n))[#super(str(n))]
     [#metadata((n: n, pos: here().position())) <side-note>]
   }
 }
@@ -103,7 +106,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 }
 `;
 
-  const NOTE_PREAMBLE = `#set page(width: 5.4cm, height: auto, margin: 0.1cm, fill: white)
+  const NOTE_PREAMBLE = `#set page(width: 6cm, height: auto, margin: 0.1cm, fill: none)
 #set text(font: "Neue Montreal", size: 8.5pt, fill: black)
 #set par(leading: 0.65em)
 
@@ -821,6 +824,12 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     }
 
     trackCursorHook = () => void trackCursor();
+
+    // Sidenote markers compile to svg links; a click in the live preview
+    // must never navigate away from the editor.
+    previewPane.addEventListener('click', event => {
+      if ((event.target as Element).closest('a')) event.preventDefault();
+    });
 
     document.getElementById('editor-pane')!.addEventListener(
       'paste',

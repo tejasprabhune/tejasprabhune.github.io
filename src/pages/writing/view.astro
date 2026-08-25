@@ -40,7 +40,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
         date.hidden = false;
       }
       body.innerHTML = post.svg ?? '';
-      initSidenotes(body, post.notes ?? [], date.hidden ? null : date);
+      initSidenotes(body, post.notes ?? []);
     } catch {
       title.textContent = 'Not found.';
     }

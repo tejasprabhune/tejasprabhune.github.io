@@ -433,12 +433,16 @@ ul {
 }
 
 .post-content {
-  max-width: 40rem;
+  max-width: 44rem;
   position: relative;
 }
 
+/* The typst page carries a 0.2cm side margin (1.25% of its 16cm width);
+   shifting the svg left by that much aligns the text with the title. */
 .post-content svg {
-  width: 100%;
+  width: 102.5%;
+  max-width: none;
+  margin-left: -1.25%;
   height: auto;
   display: block;
 }
@@ -468,55 +472,55 @@ ul {
 .side-rail {
   position: absolute;
   top: 0;
-  left: calc(40rem + 2rem);
-  width: 18rem;
+  left: calc(44rem + 1.5rem);
+  width: 20rem;
+}
+
+/* The selected marker's number is faked bold by stroking its glyphs. */
+.post-content svg a.side-link {
+  cursor: pointer;
+}
+
+.post-content svg use.side-bold {
+  stroke: #000000;
+  stroke-width: 26;
 }
 
 .side-card {
   position: absolute;
   left: 0;
   width: 100%;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  padding: 0.4rem 0.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: #F2F2F2;
+  padding: 0.55rem 0.65rem;
   transition: top 0.25s ease;
   cursor: pointer;
 }
 
 .side-card.focused {
-  border-color: var(--ink);
+  background: #E8E8E8;
 }
 
 .side-card.collapsed {
   width: auto;
-  padding: 0;
-  border: 0;
+  padding: 0.15rem 0.5rem;
 }
 
 .side-card.collapsed .side-note-body {
   display: none;
 }
 
-.side-chip {
-  font: inherit;
+.side-num {
   font-size: 0.7rem;
-  line-height: 1;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  padding: 0.15rem 0.4rem;
-  cursor: pointer;
-  color: var(--muted);
+  line-height: 1.5;
+  font-weight: 500;
 }
 
-.side-chip:hover,
-.side-card.focused .side-chip {
-  border-color: var(--ink);
-  color: var(--ink);
-}
-
-.side-card:not(.collapsed) .side-chip {
-  border: 0;
-  padding: 0 0 0.25rem;
+.side-note-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .side-note-body svg {
@@ -535,6 +539,7 @@ ul {
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
+  display: block;
 }
 
 .side-toggle:hover {
@@ -560,7 +565,7 @@ ul {
   margin-top: 0.8rem;
 }
 
-@media (max-width: 1049px) {
+@media (max-width: 1100px) {
   .side-rail {
     display: none;
   }
