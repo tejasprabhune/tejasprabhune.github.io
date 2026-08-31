@@ -663,6 +663,83 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
       return 'markup';
     }
 
+    // typst_lezer binds enter to "start the next list item". That is only right
+    // when the cursor sits in the item's own markup; inside an equation, a
+    // call's arguments, a content block or an open parenthetical the line is a
+    // continuation of the item, so enter behaves like shift-enter there.
+    const LIST_NODES = new Set(['ListItem', 'EnumItem', 'TermItem']);
+    const NESTED_NODES = new Set([
+      ...MATH_NODES, ...CODE_NODES, ...VERBATIM_NODES, 'ContentBlock',
+    ]);
+    const CLOSE_TOKENS = new Set([
+      'RightParen', 'RightBracket', 'RightBrace', 'Dollar', 'RawDelim',
+    ]);
+    // Nodes that carry their own closing delimiter, and the characters that
+    // close them. Everything else (a FuncCall, a Binary) ends where its last
+    // child ends and needs no check of its own.
+    const DELIMITED: Record<string, string> = {
+      Equation: '$', Args: ')]', MathArgs: ')', Params: ')', Parenthesized: ')',
+      Array: ')', Dict: ')', Destructuring: ')', CodeBlock: '}',
+      ContentBlock: ']', Raw: '`', Str: '"',
+    };
+
+    // A construct ending exactly at the cursor still holds it while its closing
+    // delimiter is missing, which is the usual state mid-typing.
+    function closedAt(node: any, doc: any): boolean {
+      const closer = DELIMITED[node.name];
+      if (!closer) return true;
+      const last = node.lastChild;
+      if (!last) {
+        return node.to - node.from > 1 && closer.includes(doc.sliceString(node.to - 1, node.to));
+      }
+      if (last.to !== node.to) return false;
+      if (DELIMITED[last.name]) return closedAt(last, doc);
+      return CLOSE_TOKENS.has(last.name);
+    }
+
+    // Plain parentheses are markup text, so only counting them tells us whether
+    // one is still open. Text nodes skip parentheses that belong to math or code.
+    function inOpenParen(state: any, from: number, to: number): boolean {
+      let depth = 0;
+      cmLanguage.syntaxTree(state).iterate({
+        from,
+        to,
+        enter(node: any) {
+          if (node.name !== 'Text') return;
+          const text = state.doc.sliceString(Math.max(node.from, from), Math.min(node.to, to));
+          for (const ch of text) {
+            if (ch === '(') depth++;
+            else if (ch === ')' && depth > 0) depth--;
+          }
+        },
+      });
+      return depth > 0;
+    }
+
+    function inItemContinuation(state: any, pos: number): boolean {
+      let node = cmLanguage.syntaxTree(state).resolveInner(pos, -1);
+      for (; node; node = node.parent) {
+        if (LIST_NODES.has(node.name)) return inOpenParen(state, node.from, pos);
+        if (!NESTED_NODES.has(node.name)) continue;
+        if (pos < node.to || !closedAt(node, state.doc)) return true;
+      }
+      return false;
+    }
+
+    const listEnter = cmState.Prec.highest(
+      cmView.keymap.of([
+        {
+          key: 'Enter',
+          run: (editorView: any) => {
+            const state = editorView.state;
+            const range = state.selection.main;
+            if (!range.empty || !inItemContinuation(state, range.head)) return false;
+            return typstLang.insertTypstListContinuation(editorView);
+          },
+        },
+      ]),
+    );
+
     const typstPairs = EditorView.inputHandler.of((editorView: any, _from: number, _to: number, text: string) => {
       if (text !== '$' && text !== '*' && text !== '_') return false;
       const state = editorView.state;
@@ -724,6 +801,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
       parent: document.getElementById('editor-pane')!,
       extensions: [
         vimCompartment.of(vimOn ? vim() : []),
+        listEnter,
         typstPairs,
         basicSetup,
         cmView.keymap.of([cmCommands.indentWithTab]),
