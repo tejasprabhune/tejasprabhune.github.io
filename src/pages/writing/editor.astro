@@ -39,6 +39,48 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 </Layout>
 
 <script>
+  import GRAPH_LIB from '../../typst/graph.typ?raw';
+  import compilerWasmUrl from '@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url';
+  import rendererWasmUrl from '@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm?url';
+
+  const FONT_URLS = [
+    '/fonts/NeueMontreal-Regular.otf',
+    '/fonts/NeueMontreal-Medium.otf',
+    '/fonts/NeueMontreal-Italic.otf',
+    '/fonts/NeueMontreal-MediumItalic.otf',
+    '/fonts/NewCMMath-Regular.otf',
+    '/fonts/NewCMSansMath-Regular.otf',
+    '/fonts/DejaVuSansMono.ttf',
+  ];
+
+  // The compiler is a 28MB wasm binary and the fonts another 3MB, all
+  // public assets. They start downloading (and the wasm compiling) the
+  // moment the page opens so the wait hides behind the password prompt.
+  // A failed streaming compile falls back to handing the loader a plain
+  // response, which it can instantiate itself.
+  const compileWasm = (url: string) =>
+    typeof WebAssembly.compileStreaming === 'function'
+      ? WebAssembly.compileStreaming(fetch(url)).catch(() => fetch(url))
+      : fetch(url);
+  const compilerModule = compileWasm(compilerWasmUrl);
+  const rendererModule = compileWasm(rendererWasmUrl);
+  for (const url of FONT_URLS) {
+    void fetch(url)
+      .then(response => response.arrayBuffer())
+      .catch(() => {});
+  }
+  const editorModules = Promise.all([
+    import('codemirror'),
+    import('@replit/codemirror-vim'),
+    import('codemirror-lang-typst/lezer'),
+    import('@codemirror/language'),
+    import('@codemirror/state'),
+    import('@codemirror/view'),
+    import('@codemirror/commands'),
+    import('@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs'),
+    import('@myriaddreamin/typst.ts/dist/esm/fs/index.mjs'),
+  ]);
+
   const gate = document.getElementById('gate')!;
   const API = gate.dataset.api!;
   const PASSWORD_KEY = 'canon-password';
@@ -66,14 +108,24 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 
 `;
 
-  // Every compile gets the sidenote bindings and house style without the
-  // author having to import them. Sources that carry their own /side.typ
-  // import are left alone.
-  const SIDE_PRELUDE =
-    '#import "/side.typ": side, side-appendix\n' +
-    '#show heading: set block(above: 1.6em, below: 0.9em)\n';
-  const withSidePrelude = (source: string) =>
-    source.includes('/side.typ') ? source : SIDE_PRELUDE + source;
+  // Every compile gets the sidenote and graph bindings plus house style
+  // without the author having to import them. Imports the source already
+  // carries are not repeated.
+  const SIDE_IMPORT = '#import "/side.typ": side, side-appendix\n';
+  const GRAPH_IMPORT =
+    '#import "/graph.typ": graph, node, edge, dots, text-at, shaded, plot, func, data, vline, hline\n';
+  const HOUSE_STYLE = '#show heading: set block(above: 1.6em, below: 0.9em)\n';
+  const preludeFor = (source: string) =>
+    (source.includes('/side.typ') ? '' : SIDE_IMPORT) +
+    (source.includes('/graph.typ') ? '' : GRAPH_IMPORT) +
+    HOUSE_STYLE;
+  const withPrelude = (source: string) => preludeFor(source) + source;
+
+  // Shadow modules available to every compile, re-added after each reset.
+  async function addLibraries($typst: any) {
+    await $typst.addSource('/side.typ', SIDE_LIB);
+    await $typst.addSource('/graph.typ', GRAPH_LIB);
+  }
 
   // Sidenotes: #side[...] renders a superscript number and records the
   // marker's position for the published page's margin rail. The appendix
@@ -110,7 +162,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   const NOTE_PREAMBLE = `#set page(width: 14.5cm, height: auto, margin: 0.1cm, fill: none)
 #set text(font: "Neue Montreal", size: 12pt, fill: black)
 #set par(leading: 0.75em)
-
+${GRAPH_IMPORT}
 `;
 
   type Meta = {
@@ -187,7 +239,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   // The main file lives at a fixed path so image("/images/...") paths
   // resolve against the shadow filesystem the pasted images are mapped into.
   async function compileSvg(extra = ''): Promise<string> {
-    await typst.$typst.addSource('/main.typ', withSidePrelude(docText()) + extra);
+    await typst.$typst.addSource('/main.typ', withPrelude(docText()) + extra);
     return typst.$typst.svg({ mainFilePath: '/main.typ' });
   }
 
@@ -258,7 +310,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     imageBlobs.clear();
     dirtyImages.clear();
     await typst.$typst.resetShadow();
-    await typst.$typst.addSource('/side.typ', SIDE_LIB);
+    await addLibraries(typst.$typst);
     renderImageStrip();
   }
 
@@ -467,6 +519,12 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   }
 
   async function publish() {
+    try {
+      await shrinkExistingImages();
+    } catch (error) {
+      setStatus((error as Error).message, true);
+      return;
+    }
     if (!(await save())) return;
     setStatus('publishing…');
     try {
@@ -545,12 +603,69 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     return `img-${n}.${extension}`;
   }
 
-  async function pasteImage(file: File) {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const extension = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/gif' ? 'gif' : 'png';
-    const filename = nextImageName(extension);
+  // Screenshots arrive as large PNGs, and once embedded in the published
+  // SVG as base64 they dominate the page weight without compressing.
+  // Re-encoding them as WebP keeps them a fraction of the size.
+  const SHRINK_THRESHOLD = 100 * 1024;
+  async function shrinkImage(
+    bytes: Uint8Array,
+    type: string,
+  ): Promise<{ bytes: Uint8Array; type: string } | null> {
+    if (type !== 'image/png' || bytes.byteLength < SHRINK_THRESHOLD) return null;
+    if (typeof OffscreenCanvas === 'undefined') return null;
+    try {
+      const bitmap = await createImageBitmap(new Blob([bytes.buffer as ArrayBuffer], { type }));
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.9 });
+      if (blob.type !== 'image/webp' || blob.size > bytes.byteLength * 0.7) return null;
+      return { bytes: new Uint8Array(await blob.arrayBuffer()), type: 'image/webp' };
+    } catch {
+      return null;
+    }
+  }
 
-    imageBlobs.set(filename, { bytes, type: file.type || 'image/png' });
+  const extensionFor = (type: string) =>
+    type === 'image/jpeg' ? 'jpg' : type === 'image/gif' ? 'gif' : type === 'image/webp' ? 'webp' : 'png';
+
+  // Images uploaded before WebP conversion existed are converted when the
+  // post is next published, with their references in the text renamed.
+  async function shrinkExistingImages() {
+    for (const [filename, image] of [...imageBlobs]) {
+      const shrunk = await shrinkImage(image.bytes, image.type);
+      if (!shrunk) continue;
+      const renamed = nextImageName('webp');
+      const from = `/images/${filename}`;
+      const to = `/images/${renamed}`;
+      const changes = [];
+      const source = docText();
+      for (let at = source.indexOf(from); at >= 0; at = source.indexOf(from, at + from.length)) {
+        changes.push({ from: at, to: at + from.length, insert: to });
+      }
+      if (changes.length) view.dispatch({ changes });
+
+      imageBlobs.set(renamed, { bytes: shrunk.bytes, type: shrunk.type });
+      dirtyImages.add(renamed);
+      await typst.$typst.mapShadow(to, shrunk.bytes);
+
+      if (image.id) await api(`/api/writing/images/${image.id}`, { method: 'DELETE' });
+      imageBlobs.delete(filename);
+      dirtyImages.delete(filename);
+      await typst.$typst.unmapShadow(from);
+      setStatus(`converted ${filename} to ${renamed}`);
+    }
+    renderImageStrip();
+  }
+
+  async function pasteImage(file: File) {
+    const original = new Uint8Array(await file.arrayBuffer());
+    const shrunk = await shrinkImage(original, file.type);
+    const bytes = shrunk?.bytes ?? original;
+    const type = shrunk?.type ?? (file.type || 'image/png');
+    const filename = nextImageName(extensionFor(type));
+
+    imageBlobs.set(filename, { bytes, type });
     dirtyImages.add(filename);
     await typst.$typst.mapShadow(`/images/${filename}`, bytes);
     renderImageStrip();
@@ -572,39 +687,19 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     studio.hidden = false;
     setStatus('loading editor…');
 
-    const [codemirror, vimMode, typstLang, cmLanguage, cmState, cmView, cmCommands, snippet, typstFs, compilerWasm, rendererWasm] =
-      await Promise.all([
-        import('codemirror'),
-        import('@replit/codemirror-vim'),
-        import('codemirror-lang-typst/lezer'),
-        import('@codemirror/language'),
-        import('@codemirror/state'),
-        import('@codemirror/view'),
-        import('@codemirror/commands'),
-        import('@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs'),
-        import('@myriaddreamin/typst.ts/dist/esm/fs/index.mjs'),
-        import('@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url'),
-        import('@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm?url'),
-      ]);
+    const [codemirror, vimMode, typstLang, cmLanguage, cmState, cmView, cmCommands, snippet, typstFs] =
+      await editorModules;
 
     typst = snippet;
     const { $typst, TypstSnippet } = snippet;
-    $typst.setCompilerInitOptions({ getModule: () => compilerWasm.default });
-    $typst.setRendererInitOptions({ getModule: () => rendererWasm.default });
+    $typst.setCompilerInitOptions({ getModule: () => compilerModule });
+    $typst.setRendererInitOptions({ getModule: () => rendererModule });
     $typst.use(
       TypstSnippet.withAccessModel(new typstFs.MemoryAccessModel()),
       TypstSnippet.disableDefaultFontAssets(),
-      TypstSnippet.preloadFonts([
-        '/fonts/NeueMontreal-Regular.otf',
-        '/fonts/NeueMontreal-Medium.otf',
-        '/fonts/NeueMontreal-Italic.otf',
-        '/fonts/NeueMontreal-MediumItalic.otf',
-        '/fonts/NewCMMath-Regular.otf',
-        '/fonts/NewCMSansMath-Regular.otf',
-        '/fonts/DejaVuSansMono.ttf',
-      ]),
+      TypstSnippet.preloadFonts(FONT_URLS),
     );
-    await $typst.addSource('/side.typ', SIDE_LIB);
+    await addLibraries($typst);
 
     const { basicSetup, EditorView } = codemirror;
     const { vim, Vim } = vimMode;
@@ -878,9 +973,8 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
           return;
         }
         const source = state.doc.toString();
-        const prelude = source.includes('/side.typ') ? '' : SIDE_PRELUDE;
         const tracked =
-          prelude + source.slice(0, injectPos) + TRACK_MARK + source.slice(injectPos);
+          preludeFor(source) + source.slice(0, injectPos) + TRACK_MARK + source.slice(injectPos);
         await typst.$typst.addSource('/track.typ', tracked);
         // The snippet's own query() forgets to compile the world first, so
         // drive the world directly.

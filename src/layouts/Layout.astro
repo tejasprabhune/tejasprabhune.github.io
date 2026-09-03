@@ -25,6 +25,9 @@ const links = [
   <title>{title}</title>
   <meta name="description" content={description}>
   <meta name="color-scheme" content="light">
+  <link rel="preload" href="/fonts/NeueMontreal-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/NeueMontreal-Medium.woff2" as="font" type="font/woff2" crossorigin>
+  <slot name="head" />
 </head>
 <body>
   <main class={wide ? 'wide' : post ? 'post' : undefined}>
