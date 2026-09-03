@@ -123,7 +123,11 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   const SIDE_IMPORT = '#import "/side.typ": side, side-appendix\n';
   const GRAPH_IMPORT =
     '#import "/graph.typ": graph, node, edge, ellipsis, text-at, shaded, plot, func, data, vline, hline\n';
-  const HOUSE_STYLE = '#show heading: set block(above: 1.6em, below: 0.9em)\n';
+  // Links read like web links; sidenote markers are links too and keep
+  // their plain superscript.
+  const LINK_STYLE =
+    '#show link: it => if type(it.dest) == str and it.dest.starts-with("side:") { it } else { underline(strong(it)) }\n';
+  const HOUSE_STYLE = '#show heading: set block(above: 1.6em, below: 0.9em)\n' + LINK_STYLE;
   const preludeFor = (source: string) =>
     (source.includes('/side.typ') ? '' : SIDE_IMPORT) +
     (source.includes('/graph.typ') ? '' : GRAPH_IMPORT) +
@@ -171,7 +175,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
   const NOTE_PREAMBLE = `#set page(width: 14.5cm, height: auto, margin: 0.1cm, fill: none)
 #set text(font: "Neue Montreal", size: 12pt, fill: black)
 #set par(leading: 0.75em)
-${GRAPH_IMPORT}
+${GRAPH_IMPORT}${LINK_STYLE}
 `;
 
   type Meta = {
