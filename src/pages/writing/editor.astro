@@ -691,7 +691,7 @@ ${GRAPH_IMPORT}
     compileSoon();
   }
 
-  // Cmd+K opens a prompt at the cursor. Enter sends the request, the
+  // Cmd+Shift+K opens a prompt at the cursor (Firefox owns Cmd+K). Enter sends the request, the
   // selection and the document to the backend, which drafts typst with
   // Claude; the reply replaces the selection or lands at the cursor.
   const assistForm = document.getElementById('assist') as HTMLFormElement;
@@ -992,7 +992,7 @@ ${GRAPH_IMPORT}
     const assistKey = cmState.Prec.highest(
       cmView.keymap.of([
         {
-          key: 'Mod-k',
+          key: 'Mod-Shift-k',
           run: () => {
             openAssist();
             return true;
