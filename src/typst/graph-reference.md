@@ -1,7 +1,7 @@
 # Figure library reference
 
 Every document is compiled with these names already imported:
-`graph, node, edge, dots, text-at, shaded, plot, func, data, vline, hline`
+`graph, node, edge, ellipsis, text-at, shaded, plot, func, data, vline, hline`
 (from /graph.typ) and `side` (sidenotes: `#side[...]` renders a numbered margin note).
 
 House style: pages are 16cm wide, body text 12pt Neue Montreal, math in New Computer
@@ -24,7 +24,7 @@ The canvas is sized automatically from the items.
   - `style`: `"solid"`, `"dashed"`, `"dotted"`. `arrow: false` gives an undirected edge.
   - `bend` is a fraction of the edge length; positive bows to the right of the direction of travel, so an edge heading down bows to the left of the page. Use 0.25 to 0.4 for edges that must skip over intermediate rows.
   - `label-pos` defaults to `top` for mostly-horizontal edges and `left` for mostly-vertical ones.
-- `dots((x, y))` draws a centered ellipsis; `text-at((x, y), body)` places arbitrary content.
+- `ellipsis((x, y))` draws a centered ellipsis (the helper is not called `dots`, which stays the math symbol); `text-at((x, y), body)` places arbitrary content.
 
 Example, a hidden Markov model:
 
@@ -35,7 +35,7 @@ Example, a hidden Markov model:
     node("x1", (0, 0), label: $X_1$, label-pos: top),
     node("x2", (1, 0), label: $X_2$, label-pos: top),
     node("x3", (2, 0), label: $X_3$, label-pos: top),
-    dots((3, 0)),
+    ellipsis((3, 0)),
     node("xT", (4, 0), label: $X_T$, label-pos: top),
     node("y1", (0, 1), label: $Y_1$, label-pos: bottom, fill: shaded),
     node("y2", (1, 1), label: $Y_2$, label-pos: bottom, fill: shaded),
@@ -64,7 +64,7 @@ Example, a factorial HMM whose upper chains reach the observation with bent edge
     node("b2", (1, 1), label: $X_2^((2))$, label-pos: top),
     node("y1", (0, 2), label: $Y_1$, label-pos: bottom, fill: luma(45%)),
     node("y2", (1, 2), label: $Y_2$, label-pos: bottom, fill: luma(45%)),
-    dots((1.85, 0)), dots((1.85, 1)),
+    ellipsis((1.85, 0)), ellipsis((1.85, 1)),
     edge("a1", "a2"), edge("a2", (1.75, 0)),
     edge("b1", "b2"), edge("b2", (1.75, 1)),
     edge("a1", "y1", bend: 0.35), edge("b1", "y1"),

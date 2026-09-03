@@ -8,7 +8,7 @@
 //     node("y1", (0, 1), label: $Y_1$, label-pos: bottom, fill: shaded),
 //     edge("x1", "y1", label: $B$, label-pos: left),
 //     edge("x1", (2, 0), style: "dashed", bend: 0.3),
-//     dots((1, 0)),
+//     ellipsis((1, 0)),
 //     text-at((-0.6, 0), $pi$),
 //   )
 //
@@ -124,9 +124,7 @@
 
 #let text-at(at, body) = (kind: "text", pos: at, body: body)
 
-#let ellipsis = $dots.c$
-
-#let dots(at) = text-at(at, ellipsis)
+#let ellipsis(at) = text-at(at, $dots.c$)
 
 // Lays out nodes on a grid with `unit` spacing. Edges connect node ids or
 // raw (x, y) coordinates and stop short of the circles they touch. A positive
