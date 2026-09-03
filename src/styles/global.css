@@ -98,17 +98,23 @@ main.wide {
   min-height: 0;
 }
 
-/* Post pages centre a body-width column, nudged left by --rail-shift so
-   the sidenote rail in the right margin has room. */
+/* Post pages centre a body-width column. While notes are open the page
+   splits in half: the column moves into the left half and the sidenote
+   rail fills the right half. */
 main.post {
-  --rail-shift: 8rem;
   max-width: none;
 }
 
-main.post article {
+main.post > article {
   max-width: 44rem;
-  margin-left: max(1.5rem, calc((100% - 44rem) / 2 - var(--rail-shift)));
+  margin-left: auto;
   margin-right: auto;
+  transition: margin-left 0.3s ease, max-width 0.3s ease;
+}
+
+main.post.notes-open > article {
+  max-width: min(44rem, calc(50% - 4rem));
+  margin-left: max(1.5rem, calc(50% - 1rem - min(44rem, calc(50% - 4rem))));
 }
 
 footer {
@@ -460,10 +466,9 @@ ul {
   display: block;
 }
 
-/* Sidenotes: the rail sits in the margin to the right of the centred
-   column and takes whatever room the viewport leaves there, up to the
-   width the notes were compiled for. Narrower rails scale the notes down;
-   below the breakpoint they become a footnote list instead. */
+/* Sidenotes: the rail occupies the right half of the page while notes are
+   open, up to the width the notes were compiled for. Narrower rails scale
+   the notes down; below the breakpoint they become a footnote list. */
 .post-body {
   position: relative;
 }
@@ -485,12 +490,21 @@ ul {
   background: rgba(0, 0, 0, 0.08);
 }
 
+/* Notes compile at the body's page width, so a rail as wide as the column
+   (plus the card's padding and number gutter, and the 2.5% the body svg is
+   scaled by) shows them at the body's text size whatever the column's
+   width. */
 .side-rail {
+  display: none;
   position: absolute;
   top: 0;
   left: calc(100% + 1.5rem);
-  width: clamp(14rem, calc((100vw - 44rem) / 2 - 3.5rem + var(--rail-shift)), 31rem);
+  width: calc(102.5% + 2.8rem);
   min-width: 0;
+}
+
+main.post.notes-open .side-rail {
+  display: block;
 }
 
 /* The selected marker's number is faked bold by stroking its glyphs. */
@@ -584,11 +598,12 @@ ul {
 }
 
 @media (max-width: 1080px) {
-  main.post article {
+  main.post.notes-open > article {
+    max-width: 44rem;
     margin-left: auto;
   }
 
-  .side-rail {
+  main.post.notes-open .side-rail {
     display: none;
   }
 

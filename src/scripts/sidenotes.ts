@@ -120,8 +120,17 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[]) {
   let showAll = false;
   let focused: number | null = null;
 
+  // Narrow viewports get the footnote list instead of the split view.
+  const narrow = window.matchMedia('(max-width: 1080px)');
+  const main = wrap.closest('main');
+
   function railVisible() {
-    return getComputedStyle(rail).display !== 'none';
+    return !narrow.matches;
+  }
+
+  // Notes open the split view: text in the left half, notes in the right.
+  function notesOpen() {
+    return showAll || focused != null;
   }
 
   function select(n: number) {
@@ -166,8 +175,14 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[]) {
       }
       hotspots.get(note.n)?.classList.toggle('active', focusedNote);
     }
-    toggle.textContent = `${showAll ? 'Hide' : 'Show'} notes (${notes.length})`;
-    layout();
+    const open = notesOpen();
+    main?.classList.toggle('notes-open', open);
+    toggle.textContent = `${open ? 'Hide' : 'Show'} notes (${notes.length})`;
+    if (open) {
+      layout();
+    } else {
+      wrap.style.minHeight = '';
+    }
   }
 
   function layout() {
@@ -206,10 +221,15 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[]) {
   }
 
   toggle.addEventListener('click', () => {
-    showAll = !showAll;
-    if (!showAll) focused = null;
+    if (notesOpen()) {
+      showAll = false;
+      focused = null;
+    } else {
+      showAll = true;
+    }
     update();
   });
+  narrow.addEventListener('change', () => update());
 
   // With every note open, follow the reader: focus the note whose anchor is
   // closest to the middle of the viewport.
