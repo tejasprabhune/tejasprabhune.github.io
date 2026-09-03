@@ -170,11 +170,17 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 }
 `;
 
-  // Notes compile at the body's text size on a page narrowed by the card's
-  // number gutter and padding, so they display at the same scale as the body.
-  const NOTE_PREAMBLE = `#set page(width: 14.5cm, height: auto, margin: 0.1cm, fill: none)
+  // Notes compile at the body's text size on a page as wide as the margin
+  // rail's note area, so a full-width rail shows them at the body's scale.
+  // The rare display equation wider than the note shrinks to fit rather
+  // than spilling over the body text.
+  const NOTE_PREAMBLE = `#set page(width: 10cm, height: auto, margin: 0.1cm, fill: none)
 #set text(font: "Neue Montreal", size: 12pt, fill: black)
 #set par(leading: 0.75em)
+#show math.equation.where(block: true): it => layout(size => {
+  let w = measure(it).width
+  if w > size.width { scale(reflow: true, size.width / w * 100%, it) } else { it }
+})
 ${GRAPH_IMPORT}${LINK_STYLE}
 `;
 

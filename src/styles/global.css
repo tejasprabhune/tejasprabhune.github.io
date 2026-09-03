@@ -98,9 +98,17 @@ main.wide {
   min-height: 0;
 }
 
-/* Post pages hold two body-width columns: the text and its sidenote rail. */
+/* Post pages centre a body-width column, nudged left by --rail-shift so
+   the sidenote rail in the right margin has room. */
 main.post {
-  max-width: 94rem;
+  --rail-shift: 8rem;
+  max-width: none;
+}
+
+main.post article {
+  max-width: 44rem;
+  margin-left: max(1.5rem, calc((100% - 44rem) / 2 - var(--rail-shift)));
+  margin-right: auto;
 }
 
 footer {
@@ -452,14 +460,12 @@ ul {
   display: block;
 }
 
-/* Sidenotes: the rail is a second column as wide as the text column;
-   both shrink together when the viewport is tight. */
+/* Sidenotes: the rail sits in the margin to the right of the centred
+   column and takes whatever room the viewport leaves there, up to the
+   width the notes were compiled for. Narrower rails scale the notes down;
+   below the breakpoint they become a footnote list instead. */
 .post-body {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 44rem) minmax(0, 44rem);
-  gap: 1.5rem;
-  align-items: start;
 }
 
 .side-hot {
@@ -480,7 +486,10 @@ ul {
 }
 
 .side-rail {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: calc(100% + 1.5rem);
+  width: clamp(14rem, calc((100vw - 44rem) / 2 - 3.5rem + var(--rail-shift)), 31rem);
   min-width: 0;
 }
 
@@ -544,6 +553,7 @@ ul {
   background: none;
   border: 0;
   padding: 0;
+  margin-top: 0.3rem;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -573,9 +583,9 @@ ul {
   margin-top: 0.8rem;
 }
 
-@media (max-width: 1100px) {
-  .post-body {
-    grid-template-columns: minmax(0, 44rem);
+@media (max-width: 1080px) {
+  main.post article {
+    margin-left: auto;
   }
 
   .side-rail {

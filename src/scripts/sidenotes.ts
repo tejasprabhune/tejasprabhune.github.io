@@ -22,10 +22,13 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[]) {
   rail.className = 'side-rail';
   wrap.append(rail);
 
+  // The show/hide control sits under the post date, above the text.
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'side-toggle';
-  rail.append(toggle);
+  const dateLine = wrap.parentElement?.querySelector('.post-date');
+  if (dateLine) dateLine.after(toggle);
+  else wrap.before(toggle);
 
   // Marker links inside the compiled svg are the primary click targets.
   // Documents compiled before markers became links fall back to invisible
@@ -163,14 +166,14 @@ export function initSidenotes(content: HTMLElement, notes: SideNote[]) {
       }
       hotspots.get(note.n)?.classList.toggle('active', focusedNote);
     }
-    toggle.textContent = showAll ? 'hide sidenotes' : `sidenotes (${notes.length})`;
+    toggle.textContent = `${showAll ? 'Hide' : 'Show'} notes (${notes.length})`;
     layout();
   }
 
   function layout() {
     const anchor = anchors();
     if (!anchor.size) return;
-    const minTop = toggle.offsetHeight + GAP;
+    const minTop = 0;
     const heights = notes.map(note => cards.get(note.n)!.offsetHeight);
     const tops: number[] = new Array(notes.length);
     const focusIndex = focused == null ? -1 : notes.findIndex(note => note.n === focused);

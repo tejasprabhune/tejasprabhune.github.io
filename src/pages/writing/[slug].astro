@@ -24,7 +24,7 @@ export async function getStaticPaths() {
 
 const { post } = Astro.props;
 const date = post.published_at
-  ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   : '';
 ---
 <Layout title={`${post.title}: Tejas Prabhune`} post>
