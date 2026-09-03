@@ -29,7 +29,15 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
     </div>
     <div id="image-strip" hidden></div>
     <div id="panes">
-      <div id="editor-pane"></div>
+      <div id="editor-pane">
+        <form id="assist" hidden>
+          <div id="assist-row">
+            <input type="text" id="assist-input" placeholder="describe a figure, or how to change the selection" autocomplete="off">
+            <span id="assist-status"></span>
+          </div>
+          <div id="assist-images" hidden></div>
+        </form>
+      </div>
       <div id="preview-pane">
         <div id="preview"></div>
         <pre id="diagnostics" hidden></pre>
@@ -40,6 +48,7 @@ const API = import.meta.env.PUBLIC_CANON_API ?? 'https://tejas-life-api.fly.dev'
 
 <script>
   import GRAPH_LIB from '../../typst/graph.typ?raw';
+  import GRAPH_REFERENCE from '../../typst/graph-reference.md?raw';
   import compilerWasmUrl from '@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url';
   import rendererWasmUrl from '@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm?url';
 
@@ -682,6 +691,165 @@ ${GRAPH_IMPORT}
     compileSoon();
   }
 
+  // Cmd+K opens a prompt at the cursor. Enter sends the request, the
+  // selection and the document to the backend, which drafts typst with
+  // Claude; the reply replaces the selection or lands at the cursor.
+  const assistForm = document.getElementById('assist') as HTMLFormElement;
+  const assistInput = document.getElementById('assist-input') as HTMLInputElement;
+  const assistStatus = document.getElementById('assist-status')!;
+  const assistImages = document.getElementById('assist-images')!;
+  // Pasted reference images (a figure from a paper, say) travel with the
+  // request as base64 content blocks. Large ones are scaled down first;
+  // the API would resize them anyway and the tokens are cheaper.
+  type AssistImage = { media_type: string; data: string; url: string };
+  let assistAttachments: AssistImage[] = [];
+  const ASSIST_IMAGE_EDGE = 1600;
+
+  async function attachAssistImage(file: File) {
+    let blob: Blob = file;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, ASSIST_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+      if (scale < 1 || !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        const canvas = new OffscreenCanvas(
+          Math.round(bitmap.width * scale),
+          Math.round(bitmap.height * scale),
+        );
+        canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        blob = await canvas.convertToBlob({ type: 'image/png' });
+      }
+      bitmap.close();
+    } catch {
+      // Unreadable as a bitmap; send the bytes as they are.
+    }
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    assistAttachments.push({
+      media_type: blob.type || 'image/png',
+      data: btoa(binary),
+      url: URL.createObjectURL(blob),
+    });
+    renderAssistImages();
+  }
+
+  function renderAssistImages() {
+    assistImages.innerHTML = '';
+    assistImages.hidden = assistAttachments.length === 0;
+    assistAttachments.forEach((image, index) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'assist-image';
+      chip.title = 'remove';
+      const img = document.createElement('img');
+      img.src = image.url;
+      chip.append(img);
+      chip.addEventListener('click', () => {
+        URL.revokeObjectURL(image.url);
+        assistAttachments.splice(index, 1);
+        renderAssistImages();
+        assistInput.focus();
+      });
+      assistImages.append(chip);
+    });
+  }
+
+  function clearAssistImages() {
+    for (const image of assistAttachments) URL.revokeObjectURL(image.url);
+    assistAttachments = [];
+    renderAssistImages();
+  }
+  const ASSIST_REFERENCE = `${GRAPH_REFERENCE}\n\n## Library source\n\n\`\`\`typst\n${GRAPH_LIB}\n\`\`\`\n`;
+  let assistRequest = 0;
+
+  function openAssist() {
+    const pane = document.getElementById('editor-pane')!;
+    const head = view.state.selection.main.head;
+    const coords = view.coordsAtPos(head);
+    const paneRect = pane.getBoundingClientRect();
+    const top = coords ? coords.bottom - paneRect.top + pane.scrollTop + 6 : 12;
+    assistForm.style.top = `${Math.max(4, Math.min(top, pane.clientHeight - 48))}px`;
+    assistForm.hidden = false;
+    assistStatus.textContent = '';
+    assistInput.disabled = false;
+    assistInput.select();
+    assistInput.focus();
+  }
+
+  function closeAssist() {
+    assistRequest += 1;
+    clearAssistImages();
+    assistForm.hidden = true;
+    assistInput.disabled = false;
+    assistStatus.textContent = '';
+    view.focus();
+  }
+
+  async function runAssist() {
+    const instruction = assistInput.value.trim();
+    if (!instruction || assistInput.disabled) return;
+    const range = view.state.selection.main;
+    const selection = view.state.sliceDoc(range.from, range.to);
+    const ticket = ++assistRequest;
+    assistInput.disabled = true;
+    assistStatus.textContent = 'drafting…';
+    try {
+      const result = await api('/api/writing/assist', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          instruction,
+          selection,
+          source: docText(),
+          reference: ASSIST_REFERENCE,
+          images: assistAttachments.map(({ media_type, data }) => ({ media_type, data })),
+        }),
+      });
+      if (ticket !== assistRequest) return;
+      let typst: string = result.typst ?? '';
+      if (!typst) throw new Error('empty reply');
+      if (range.empty) {
+        const line = view.state.doc.lineAt(range.from);
+        if (range.from > line.from) typst = '\n' + typst;
+        if (range.from < line.to) typst = typst + '\n';
+      }
+      view.dispatch({
+        changes: { from: range.from, to: range.to, insert: typst },
+        selection: { anchor: range.from + typst.length },
+      });
+      assistInput.value = '';
+      closeAssist();
+      compileSoon();
+      const usage = result.usage ?? {};
+      setStatus(`drafted with ${result.model ?? 'claude'} (${usage.output_tokens ?? '?'} tokens out)`);
+    } catch (error) {
+      if (ticket !== assistRequest) return;
+      assistInput.disabled = false;
+      assistStatus.textContent = (error as Error).message;
+    }
+  }
+
+  assistForm.addEventListener('submit', event => {
+    event.preventDefault();
+    void runAssist();
+  });
+  assistInput.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeAssist();
+    }
+  });
+  assistInput.addEventListener('paste', event => {
+    const files = event.clipboardData?.files;
+    const images = files ? [...files].filter(f => f.type.startsWith('image/')) : [];
+    if (!images.length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    for (const file of images) void attachAssistImage(file);
+  });
+
   async function boot() {
     gate.hidden = true;
     studio.hidden = false;
@@ -821,6 +989,18 @@ ${GRAPH_IMPORT}
       return false;
     }
 
+    const assistKey = cmState.Prec.highest(
+      cmView.keymap.of([
+        {
+          key: 'Mod-k',
+          run: () => {
+            openAssist();
+            return true;
+          },
+        },
+      ]),
+    );
+
     const listEnter = cmState.Prec.highest(
       cmView.keymap.of([
         {
@@ -896,6 +1076,7 @@ ${GRAPH_IMPORT}
       parent: document.getElementById('editor-pane')!,
       extensions: [
         vimCompartment.of(vimOn ? vim() : []),
+        assistKey,
         listEnter,
         typstPairs,
         basicSetup,
@@ -1007,6 +1188,8 @@ ${GRAPH_IMPORT}
     document.getElementById('editor-pane')!.addEventListener(
       'paste',
       event => {
+        // Pastes into the assist prompt are its own reference images.
+        if ((event.target as Element).closest('#assist')) return;
         const files = event.clipboardData?.files;
         const file = files && [...files].find(f => f.type.startsWith('image/'));
         if (!file) return;
